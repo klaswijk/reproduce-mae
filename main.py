@@ -8,11 +8,13 @@ from mae import MAE
 
 MODEL_PATH = "./cifar_mae.pth"
 
+
 def imshow(img):
     img = img / 2 + 0.5     # unnormalize
     npimg = img.detach().numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
+
 
 def main():
     transform = transforms.Compose([
@@ -21,9 +23,9 @@ def main():
     ])
 
     dataset = datasets.CIFAR10(
-        root='./data', 
-        train=True, 
-        download=True, 
+        root='./data',
+        train=True,
+        download=True,
         transform=transform
     )
 
@@ -47,7 +49,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     for epoch in range(1):
-        
+
         running_loss = 0.0
         for i, data in enumerate(trainloader):
             inputs, _ = data
@@ -64,7 +66,7 @@ def main():
                 running_loss = 0.0
 
                 imshow(utils.make_grid(torch.vstack([inputs, outputs]), nrow=4))
-    
+
     print("Finished training")
     torch.save(model.state_dict(), MODEL_PATH)
     print("Saved model")

@@ -44,18 +44,20 @@ class MAE(nn.Module):
         self.patch_size = patch_size
         self.encoder_hidden_dim = encoder_hidden_dim
         self.encoder_conv_proj = nn.Conv2d(
-                in_channels=3, out_channels=encoder_hidden_dim, kernel_size=patch_size, stride=patch_size
+            in_channels=3, out_channels=encoder_hidden_dim, kernel_size=patch_size, stride=patch_size
         )
         self.decoder_hidden_dim = encoder_hidden_dim
         self.decoder_inv_conv_proj = nn.ConvTranspose2d(
-                in_channels=decoder_hidden_dim, out_channels=3, kernel_size=patch_size, stride=patch_size
+            in_channels=decoder_hidden_dim, out_channels=3, kernel_size=patch_size, stride=patch_size
         )
 
     def patches(self, x):
         n, _, h, w = x.shape
         p = self.patch_size
-        torch._assert(h == self.image_size, f"Wrong image height! Expected {self.image_size} but got {h}!")
-        torch._assert(w == self.image_size, f"Wrong image width! Expected {self.image_size} but got {w}!")
+        torch._assert(h == self.image_size,
+                      f"Wrong image height! Expected {self.image_size} but got {h}!")
+        torch._assert(w == self.image_size,
+                      f"Wrong image width! Expected {self.image_size} but got {w}!")
         n_h = h // p
         n_w = w // p
 
@@ -78,7 +80,7 @@ class MAE(nn.Module):
         return x
 
     def decoder_forward(self, x):
-        n, c = x.shape[0], 3
+        n = x.shape[0]
         h = w = self.image_size // self.patch_size
 
         x = self.decoder(x)
