@@ -77,7 +77,7 @@ class MAE(nn.Module):
 
         x = torch.zeros_like(x)
         x[:, perm[:self.mask_length]] = masked
-        return x
+        return x, perm[:self.mask_length]
 
     def decoder_forward(self, x):
         n = x.shape[0]
@@ -90,7 +90,9 @@ class MAE(nn.Module):
         return x
 
     def forward(self, x):
-        return self.decoder_forward(self.encoder_forward(x))
+        x, masked_indices = self.encoder_forward(x)
+        x = self.decoder_forward(x)
+        return x, masked_indices
 
     def classify(self, x):
         return self.classifier(self.encoder_forward(x))
