@@ -16,6 +16,14 @@ def imshow(img):
     plt.show()
 
 
+def mask_from_patches(masked_indices, image_size, patch_size):
+    seq_length = image_size // patch_size
+    mask = torch.zeros(seq_length**2)
+    mask[masked_indices] = 1
+    mask = mask.reshape(seq_length, seq_length)
+    return torch.nn.UpsamplingNearest2d(image_size)(mask[None, None])[0, 0].type(torch.bool)
+
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -32,10 +40,13 @@ def main():
     )
 
     trainloader = DataLoader(dataset, batch_size=128, shuffle=True, num_workers=4, pin_memory=True)
+    
+    image_size = 32
+    patch_size = 4
 
     model = MAE(
-        image_size=32,
-        patch_size=4,
+        image_size=image_size,
+        patch_size=patch_size,
         encoder_layers=12,
         encoder_num_heads=4,
         encoder_hidden_dim=12,
@@ -47,6 +58,8 @@ def main():
         mask_ratio=0.5,
     ).to(device)
 
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
 
@@ -57,8 +70,9 @@ def main():
             inputs = data.to(device)
 
             optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, inputs)
+            outputs, masked_indices = model(inputs)
+            mask = mask_from_patches(masked_indices, image_size, patch_size)
+            loss = criterion(outputs[:, :, mask], inputs[:, :, mask])
             loss.backward()
             optimizer.step()
 
@@ -66,6 +80,7 @@ def main():
 
         print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / i:.3f}')
 
+        outputs[:4, :, mask] = inputs[:4, :, mask]  # Transfer known patches
         imshow(utils.make_grid(torch.vstack([inputs[:4], outputs[:4]]), nrow=4))
         print(f"Finished epoch: {epoch}")
         torch.save(model.state_dict(), MODEL_PATH)
