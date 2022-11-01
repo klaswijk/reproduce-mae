@@ -3,19 +3,6 @@ from torch import nn
 from torchvision.models.vision_transformer import Encoder as Transformer
 
 
-class Masker(nn.Module):
-
-    def __init__(
-        self,
-        mask_ratio: float,
-    ):
-        super().__init__()
-        self.mask_ratio = mask_ratio
-
-    def forward(self, x):
-        return NotImplemented
-
-
 class MAE(nn.Module):
 
     def __init__(
@@ -33,14 +20,11 @@ class MAE(nn.Module):
         mask_ratio: float,
     ):
         super().__init__()
-
+        self.image_size = image_size
         self.seq_length = (image_size // patch_size) ** 2
-
         self.mask_length = int((1 - mask_ratio) * self.seq_length)
-
-        self.masker = Masker()
         self.encoder = Transformer(
-            self.seq_length - self.mask_length,
+            self.mask_length,
             encoder_layers,
             encoder_num_heads,
             encoder_hidden_dim,
@@ -48,7 +32,6 @@ class MAE(nn.Module):
             0,
             0
         )
-
         self.decoder = Transformer(
             self.seq_length,
             decoder_layers,
@@ -57,6 +40,15 @@ class MAE(nn.Module):
             decoder_mlp_dim,
             0,
             0
+        )
+        self.patch_size = patch_size
+        self.encoder_hidden_dim = encoder_hidden_dim
+        self.encoder_conv_proj = nn.Conv2d(
+                in_channels=3, out_channels=encoder_hidden_dim, kernel_size=patch_size, stride=patch_size
+        )
+        self.decoder_hidden_dim = encoder_hidden_dim
+        self.decoder_inv_conv_proj = nn.ConvTranspose2d(
+                in_channels=decoder_hidden_dim, out_channels=3, kernel_size=patch_size, stride=patch_size
         )
 
     def patches(self, x):
@@ -67,33 +59,33 @@ class MAE(nn.Module):
         n_h = h // p
         n_w = w // p
 
-        # Linear embedding?
-        x = x.reshape(n, self.hidden_dim, n_h * n_w)
-
+        # Linear embedding
+        x = self.encoder_conv_proj(x)
+        x = x.reshape(n, self.encoder_hidden_dim, n_h * n_w)
         x = x.permute(0, 2, 1)
         return x
 
     def encoder_forward(self, x):
-        # Apply tokens
-
         x = self.patches(x)
-
         perm = torch.randperm(self.seq_length)
-
-        x = x[perm]
-        masked = x[:self.mask_length]
+        x = x[:, perm]
+        masked = x[:, :self.mask_length]
 
         masked = self.encoder(masked)
 
-        # Deshuffle
-        x = torch.zeros(self.seq_length)
-
-        x[perm[:self.mask_length]] = masked
-
+        x = torch.zeros_like(x)
+        x[:, perm[:self.mask_length]] = masked
         return x
 
     def decoder_forward(self, x):
-        return self.decoder(x)
+        n, c = x.shape[0], 3
+        h = w = self.image_size // self.patch_size
+
+        x = self.decoder(x)
+        x = x.permute(0, 2, 1)
+        x = x.reshape(n, self.decoder_hidden_dim, h, w)
+        x = self.decoder_inv_conv_proj(x)
+        return x
 
     def forward(self, x):
         return self.decoder_forward(self.encoder_forward(x))
