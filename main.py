@@ -11,7 +11,7 @@ MODEL_PATH = "./cifar_mae.pth"
 
 def imshow(img):
     img = img / 2 + 0.5
-    npimg = img.detach().numpy()
+    npimg = img.cpu().detach().numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
@@ -40,30 +40,30 @@ def main():
     )
 
     trainloader = DataLoader(dataset, batch_size=128, shuffle=True, num_workers=4, pin_memory=True)
-    
+
     image_size = 32
     patch_size = 4
 
     model = MAE(
         image_size=image_size,
         patch_size=patch_size,
-        encoder_layers=12,
-        encoder_num_heads=4,
-        encoder_hidden_dim=12,
-        encoder_mlp_dim=12,
+        encoder_layers=8,
+        encoder_num_heads=8,
+        encoder_hidden_dim=16,
+        encoder_mlp_dim=64,
         decoder_layers=4,
         decoder_num_heads=4,
-        decoder_hidden_dim=12,
-        decoder_mlp_dim=12,
+        decoder_hidden_dim=16,
+        decoder_mlp_dim=64,
         mask_ratio=0.5,
     ).to(device)
 
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
 
-    for epoch in range(10):
+    for epoch in range(25):
 
         running_loss = 0.0
         for i, (data, _) in enumerate(trainloader):
@@ -72,7 +72,7 @@ def main():
             optimizer.zero_grad()
             outputs, masked_indices = model(inputs)
             mask = mask_from_patches(masked_indices, image_size, patch_size)
-            loss = criterion(outputs[:, :, mask], inputs[:, :, mask])
+            loss = criterion(outputs[:, :, ~mask], inputs[:, :, ~mask])
             loss.backward()
             optimizer.step()
 

@@ -44,11 +44,17 @@ class MAE(nn.Module):
         self.patch_size = patch_size
         self.encoder_hidden_dim = encoder_hidden_dim
         self.encoder_conv_proj = nn.Conv2d(
-            in_channels=3, out_channels=encoder_hidden_dim, kernel_size=patch_size, stride=patch_size
+            in_channels=3,
+            out_channels=encoder_hidden_dim,
+            kernel_size=patch_size,
+            stride=patch_size
         )
         self.decoder_hidden_dim = encoder_hidden_dim
         self.decoder_inv_conv_proj = nn.ConvTranspose2d(
-            in_channels=decoder_hidden_dim, out_channels=3, kernel_size=patch_size, stride=patch_size
+            in_channels=decoder_hidden_dim,
+            out_channels=3,
+            kernel_size=patch_size,
+            stride=patch_size
         )
 
     def patches(self, x):
@@ -96,3 +102,4 @@ class MAE(nn.Module):
 
     def classify(self, x):
         return self.classifier(self.encoder_forward(x))
+
