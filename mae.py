@@ -43,13 +43,18 @@ class MAE(nn.Module):
         )
         self.patch_size = patch_size
         self.encoder_hidden_dim = encoder_hidden_dim
+        self.decoder_hidden_dim = decoder_hidden_dim
+
         self.encoder_conv_proj = nn.Conv2d(
             in_channels=3,
             out_channels=encoder_hidden_dim,
             kernel_size=patch_size,
             stride=patch_size
         )
-        self.decoder_hidden_dim = encoder_hidden_dim
+        self.hidden_proj = nn.Linear(
+            in_features=encoder_hidden_dim,
+            out_features=decoder_hidden_dim,
+        )
         self.decoder_inv_conv_proj = nn.ConvTranspose2d(
             in_channels=decoder_hidden_dim,
             out_channels=3,
@@ -91,12 +96,13 @@ class MAE(nn.Module):
 
         x = self.decoder(x)
         x = x.permute(0, 2, 1)
-        x = x.reshape(n, self.decoder_hidden_dim, h, w)
+        x = x.reshape(n, self.encoder_hidden_dim, h, w)
         x = self.decoder_inv_conv_proj(x)
         return x
 
     def forward(self, x):
         x, masked_indices = self.encoder_forward(x)
+        x = self.hidden_proj(x)
         x = self.decoder_forward(x)
         return x, masked_indices
 
