@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import nn
 from torchvision.models.vision_transformer import Encoder as Transformer
@@ -96,7 +97,7 @@ class MAE(nn.Module):
 
         x = self.decoder(x)
         x = x.permute(0, 2, 1)
-        x = x.reshape(n, self.encoder_hidden_dim, h, w)
+        x = x.reshape(n, self.decoder_hidden_dim, h, w)
         x = self.decoder_inv_conv_proj(x)
         return x
 
@@ -109,3 +110,26 @@ class MAE(nn.Module):
     def classify(self, x):
         return self.classifier(self.encoder_forward(x))
 
+
+def small_model(image_size, patch_size, mask_ratio, weight_path=None):
+    model = MAE(
+        image_size=image_size,
+        patch_size=patch_size,
+        encoder_layers=8,
+        encoder_num_heads=8,
+        encoder_hidden_dim=16,
+        encoder_mlp_dim=64,
+        decoder_layers=4,
+        decoder_num_heads=4,
+        decoder_hidden_dim=8,
+        decoder_mlp_dim=32,
+        mask_ratio=mask_ratio,
+    )
+    if weight_path:
+        print(f"Loading model from '{weight_path}'... ", end='')
+        if os.path.exists(weight_path):
+            model.load_state_dict(torch.load(weight_path))
+            print("Load successful!")
+        else:
+            print(f"No weights found")
+    return model

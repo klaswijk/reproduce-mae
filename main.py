@@ -1,12 +1,24 @@
 import numpy as np
-import torch
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms, utils
+import torch
+from torchvision import utils
+from tqdm import tqdm
 
-from mae import MAE
+from data import cifar
+from mae import small_model
 
-MODEL_PATH = "./cifar_mae.pth"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+WEIGHT_PATH = "weights/cifar_mae.pth"
+
+# Model
+PATCH_SIZE = 4
+MASK_RATIO = 0.7
+
+# Optimizer
+BATCH_SIZE = 128
+LR = 0.001
+BETA_1 = 0.9
+BETA_2 = 0.999
 
 
 def imshow(img):
@@ -16,131 +28,73 @@ def imshow(img):
     plt.show()
 
 
+def plot_comparison(input, output, mask, size=4):
+    masked = torch.clone(input[:size])
+    masked[:size, :, mask] = 0
+    output[:size, :, ~mask] = input[:size, :, ~mask]  # Transfer known patches
+    combined = torch.vstack([masked, input[:size], output[:size]])
+    imshow(utils.make_grid(combined, nrow=size))
+
+
 def mask_from_patches(masked_indices, image_size, patch_size):
     seq_length = image_size // patch_size
-    mask = torch.zeros(seq_length**2)
-    mask[masked_indices] = 1
+    mask = torch.ones(seq_length**2)
+    mask[masked_indices] = 0
     mask = mask.reshape(seq_length, seq_length)
     return torch.nn.UpsamplingNearest2d(image_size)(mask[None, None])[0, 0].type(torch.bool)
 
 
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    dataset = datasets.CIFAR10(
-        root='./data',
-        train=True,
-        download=True,
-        transform=transform
-    )
-
-    trainloader = DataLoader(dataset, batch_size=256, shuffle=True, num_workers=4, pin_memory=True)
-
-    image_size = 32
-    patch_size = 4
-
-    model = MAE(
-        image_size=image_size,
-        patch_size=patch_size,
-        encoder_layers=8,
-        encoder_num_heads=8,
-        encoder_hidden_dim=16,
-        encoder_mlp_dim=64,
-        decoder_layers=4,
-        decoder_num_heads=4,
-        decoder_hidden_dim=8,
-        decoder_mlp_dim=32,
-        mask_ratio=0.95,
-    ).to(device)
-
-    #model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-    #print("Loading model from file")
-
+def train(model_path=None, epochs=10, plot_example_interval=2):
+    trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
-
-    print("Initializing training")
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(BETA_1, BETA_2))
 
     losses = []
+    for epoch in range(1, epochs):
+        with tqdm(trainloader, unit="batch") as tepoch:
+            for data, _ in tepoch:
+                tepoch.set_description(f"Epoch {epoch}")
 
-    for epoch in range(10):
+                inputs = data.to(DEVICE)
+                optimizer.zero_grad()
+                outputs, masked_indices = model(inputs)
+                mask = mask_from_patches(masked_indices, image_size, PATCH_SIZE)
+                loss = criterion(outputs[:, :, mask], inputs[:, :, mask])
+                loss.backward()
+                optimizer.step()
+                losses.append(loss.item())
+                tepoch.set_postfix(ma_loss=f"{sum(losses[-10:]) / 10:.5f}")
+        
+        if epoch % plot_example_interval == 0:
+            plot_comparison(inputs, outputs, mask)
 
-        running_loss = 0.0
-        for i, (data, _) in enumerate(trainloader):
-            inputs = data.to(device)
-
-            optimizer.zero_grad()
-            outputs, masked_indices = model(inputs)
-            mask = mask_from_patches(masked_indices, image_size, patch_size)
-            loss = criterion(outputs[:, :, ~mask], inputs[:, :, ~mask])
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-
-        print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / i:.3f}')
-
-        losses.append(running_loss / i)
-
-        outputs[:4, :, ~mask] = inputs[:4, :, ~mask]  # Transfer known patches
-        imshow(utils.make_grid(torch.vstack([inputs[:4], outputs[:4]]), nrow=4))
-        print(f"Finished epoch: {epoch}")
-        torch.save(model.state_dict(), MODEL_PATH)
-        print("Saved model")
+    print(f"Saving model at '{model_path}'... ", end='')
+    torch.save(model.state_dict(), model_path)
+    print("Save sucessful!")
 
     plt.plot(losses)
     plt.savefig("loss.png")
 
 
-def test():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def test(model_path):
+    testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
+    criterion = torch.nn.MSELoss()
+    
+    with torch.no_grad():
+        total_loss = 0
+        for i, (data, _) in enumerate(testloader):
+            inputs = data.to(DEVICE)
+            outputs, masked_indices = model(inputs)
+            mask = mask_from_patches(masked_indices, image_size, PATCH_SIZE)
+            loss = criterion(outputs[:, :, mask], inputs[:, :, mask])
+            total_loss += loss.item()
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    dataset = datasets.CIFAR10(
-        root='./data',
-        train=False,
-        download=True,
-        transform=transform
-    )
-
-    image_size = 32
-    patch_size = 4
-
-    model = MAE(
-        image_size=image_size,
-        patch_size=patch_size,
-        encoder_layers=8,
-        encoder_num_heads=8,
-        encoder_hidden_dim=16,
-        encoder_mlp_dim=64,
-        decoder_layers=4,
-        decoder_num_heads=4,
-        decoder_hidden_dim=8,
-        decoder_mlp_dim=32,
-        mask_ratio=0.5,
-    ).to(device)
-
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-
-    testloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4, pin_memory=True)
-    data, _ = next(iter(testloader))
-    testinputs = data.to(device)
-    testoutputs, m = model(testinputs.to(device))
-    mask = mask_from_patches(m, image_size, patch_size)
-    testoutputs[:4, :, ~mask] = testinputs[:4, :, ~mask]  # Transfer known patches
-    maskinputs = torch.clone(testinputs)
-    maskinputs[:4, :, mask] = 0
-    imshow(utils.make_grid(torch.vstack([maskinputs, testinputs, testoutputs]), nrow=4))
+        plot_comparison(inputs, outputs, mask)
+        print(f"Test loss: {total_loss / len(testloader):.7f}")
 
 
 if __name__ == "__main__":
-    main()
+    train(model_path=WEIGHT_PATH, epochs=10)
+    test(model_path=WEIGHT_PATH)
