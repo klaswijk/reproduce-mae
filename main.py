@@ -12,10 +12,10 @@ WEIGHT_PATH = "weights/cifar_mae.pth"
 
 # Model
 PATCH_SIZE = 4
-MASK_RATIO = 0.7
+MASK_RATIO = 0.5
 
 # Optimizer
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 LR = 0.001
 BETA_1 = 0.9
 BETA_2 = 0.999
@@ -46,6 +46,7 @@ def mask_from_patches(masked_indices, image_size, patch_size):
 
 def train(model_path=None, epochs=10, plot_example_interval=2):
     trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE)
+
     model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(BETA_1, BETA_2))
@@ -65,9 +66,11 @@ def train(model_path=None, epochs=10, plot_example_interval=2):
                 optimizer.step()
                 losses.append(loss.item())
                 tepoch.set_postfix(ma_loss=f"{sum(losses[-10:]) / 10:.5f}")
-        
+
         if epoch % plot_example_interval == 0:
             plot_comparison(inputs, outputs, mask)
+            #val_loss = get_loss_from_dataloader(model, valloader, image_size, True)
+            #print(f"Validation loss: {val_loss:.7f}")
 
     print(f"Saving model at '{model_path}'... ", end='')
     torch.save(model.state_dict(), model_path)
@@ -77,24 +80,26 @@ def train(model_path=None, epochs=10, plot_example_interval=2):
     plt.savefig("loss.png")
 
 
-def test(model_path):
-    testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
-    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
+def get_loss_from_dataloader(model, dataloader, image_size, plot=False):
+
     criterion = torch.nn.MSELoss()
-    
+
     with torch.no_grad():
         total_loss = 0
-        for i, (data, _) in enumerate(testloader):
+        for i, (data, _) in enumerate(dataloader):
             inputs = data.to(DEVICE)
             outputs, masked_indices = model(inputs)
             mask = mask_from_patches(masked_indices, image_size, PATCH_SIZE)
             loss = criterion(outputs[:, :, mask], inputs[:, :, mask])
             total_loss += loss.item()
 
-        plot_comparison(inputs, outputs, mask)
-        print(f"Test loss: {total_loss / len(testloader):.7f}")
+        if plot:
+            plot_comparison(inputs, outputs, mask)
+
+    return total_loss / len(dataloader)
 
 
-if __name__ == "__main__":
-    train(model_path=WEIGHT_PATH, epochs=10)
-    test(model_path=WEIGHT_PATH)
+def test(model_path):
+    testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
+    print(f"Test loss: {get_loss_from_dataloader(model, testloader, image_size, True):.7f}")

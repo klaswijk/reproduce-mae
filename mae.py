@@ -56,11 +56,9 @@ class MAE(nn.Module):
             in_features=encoder_hidden_dim,
             out_features=decoder_hidden_dim,
         )
-        self.decoder_inv_conv_proj = nn.ConvTranspose2d(
-            in_channels=decoder_hidden_dim,
-            out_channels=3,
-            kernel_size=patch_size,
-            stride=patch_size
+        self.decoder_inv_conv_proj = nn.Linear(
+            in_features=encoder_hidden_dim,
+            out_features=3,
         )
 
     def patches(self, x):
@@ -92,12 +90,12 @@ class MAE(nn.Module):
         return x, perm[:self.mask_length]
 
     def decoder_forward(self, x):
-        n = x.shape[0]
-        h = w = self.image_size // self.patch_size
+        # n = x.shape[0]
+        # h = w = self.image_size // self.patch_size
 
         x = self.decoder(x)
-        x = x.permute(0, 2, 1)
-        x = x.reshape(n, self.decoder_hidden_dim, h, w)
+        # x = x.permute(0, 2, 1)
+        # x = x.reshape(n, self.decoder_hidden_dim, h, w)
         x = self.decoder_inv_conv_proj(x)
         return x
 
@@ -131,5 +129,5 @@ def small_model(image_size, patch_size, mask_ratio, weight_path=None):
             model.load_state_dict(torch.load(weight_path))
             print("Load successful!")
         else:
-            print(f"No weights found")
+            print("No weights found")
     return model
