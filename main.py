@@ -15,7 +15,7 @@ PATCH_SIZE = 4
 MASK_RATIO = 0.5
 
 # Optimizer
-BATCH_SIZE = 256
+BATCH_SIZE = 16
 LR = 0.001
 BETA_1 = 0.9
 BETA_2 = 0.999
@@ -103,3 +103,7 @@ def test(model_path):
     testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
     model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
     print(f"Test loss: {get_loss_from_dataloader(model, testloader, image_size, True):.7f}")
+
+if __name__ == "__main__":
+    #train(model_path=WEIGHT_PATH, epochs=1000, plot_example_interval=100)
+    test(model_path=WEIGHT_PATH)

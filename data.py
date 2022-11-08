@@ -1,5 +1,5 @@
 from torchvision.datasets.coco import CocoDetection
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 
 
@@ -19,7 +19,9 @@ def cifar(train=True, batch_size=256):
         train=train,
         download=True,
         transform=transform,
+
     )
+    dataset = Subset(dataset, range(1000))
     dataloader = DataLoader(
         dataset, 
         batch_size=batch_size, 
