@@ -107,7 +107,7 @@ def get_loss_from_dataloader(model, dataloader, image_size, plot=False):
 
 def test(model_path):
     testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
-    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, 10, model_path).to(DEVICE)
     print(f"Test loss: {get_loss_from_dataloader(model, testloader, image_size, True):.7f}")
 
 
