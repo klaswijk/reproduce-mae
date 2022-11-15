@@ -54,15 +54,15 @@ class PositionalEncoding(nn.Module):
 
         position = torch.arange(seq_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(seq_len, 1, d_model)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        pe = torch.zeros(1, seq_len, d_model)
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:d
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+            x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
         x = x + self.pe[:x.size(0)]
         return x
@@ -89,7 +89,7 @@ class MAE(nn.Module):
         self.image_size = image_size
         self.seq_length = (image_size // patch_size) ** 2
         self.mask_length = int((1 - mask_ratio) * self.seq_length)
-        self.encoder_pos_encoding = PositionalEncoding(encoder_hidden_dim, self.seq_length)
+        self.encoder_pos_encoding = PositionalEncoding(encoder_hidden_dim, self.seq_length + 1)
         self.decoder_pos_encoding = PositionalEncoding(decoder_hidden_dim, self.seq_length)
         self.encoder = Transformer(
             self.mask_length + 1,
