@@ -21,19 +21,23 @@ BETA_1 = 0.9
 BETA_2 = 0.999
 
 
-def imshow(img):
+def imshow(img, path=None):
     img = img / 2 + 0.5
     npimg = img.cpu().detach().numpy()
+    plt.figure(dpi=200)
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
+    if path:
+        plt.savefig(path)
+    else:
+        plt.show()
 
 
-def plot_comparison(input, output, mask, size=4):
+def plot_comparison(input, output, mask, size=4, path=None):
     masked = torch.clone(input[:size])
     masked[:size, :, mask] = 0
     output[:size, :, ~mask] = input[:size, :, ~mask]  # Transfer known patches
     combined = torch.vstack([masked, input[:size], output[:size]])
-    imshow(utils.make_grid(combined, nrow=size))
+    imshow(utils.make_grid(combined, nrow=size), path=path)
 
 
 def mask_from_patches(masked_indices, image_size, patch_size):
@@ -44,18 +48,19 @@ def mask_from_patches(masked_indices, image_size, patch_size):
     return torch.nn.UpsamplingNearest2d(image_size)(mask[None, None])[0, 0].type(torch.bool)
 
 
-def train(model_path=None, epochs=10, plot_example_interval=2):
-    trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE)
+def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
+    trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE, size=size)
 
     model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(BETA_1, BETA_2))
+    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
     losses = []
     for epoch in range(1, epochs):
-        with tqdm(trainloader, unit="batch") as tepoch:
+        with tqdm(trainloader, unit="batches") as tepoch:
             for data, _ in tepoch:
-                tepoch.set_description(f"Epoch {epoch}")
+                tepoch.set_description(f"Epoch {epoch:4d}")
 
                 inputs = data.to(DEVICE)
                 optimizer.zero_grad()
@@ -66,9 +71,11 @@ def train(model_path=None, epochs=10, plot_example_interval=2):
                 optimizer.step()
                 losses.append(loss.item())
                 tepoch.set_postfix(ma_loss=f"{sum(losses[-10:]) / 10:.5f}")
+            
+            #scheduler.step()
 
         if epoch % plot_example_interval == 0:
-            plot_comparison(inputs, outputs, mask)
+            plot_comparison(inputs, outputs, mask, path=f"imgs/epoch_{epoch}")
             #val_loss = get_loss_from_dataloader(model, valloader, image_size, True)
             #print(f"Validation loss: {val_loss:.7f}")
 
@@ -77,16 +84,15 @@ def train(model_path=None, epochs=10, plot_example_interval=2):
     print("Save sucessful!")
 
     plt.plot(losses)
-    plt.savefig("loss.png")
+    plt.savefig("imgs/loss")
 
 
 def get_loss_from_dataloader(model, dataloader, image_size, plot=False):
-
     criterion = torch.nn.MSELoss()
 
     with torch.no_grad():
         total_loss = 0
-        for i, (data, _) in enumerate(dataloader):
+        for data, _ in dataloader:
             inputs = data.to(DEVICE)
             outputs, masked_indices = model(inputs)
             mask = mask_from_patches(masked_indices, image_size, PATCH_SIZE)
@@ -104,6 +110,7 @@ def test(model_path):
     model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
     print(f"Test loss: {get_loss_from_dataloader(model, testloader, image_size, True):.7f}")
 
+
 if __name__ == "__main__":
-    #train(model_path=WEIGHT_PATH, epochs=1000, plot_example_interval=100)
-    test(model_path=WEIGHT_PATH)
+    train(model_path=WEIGHT_PATH, epochs=200, plot_example_interval=100, size=100)
+    #test(model_path=WEIGHT_PATH)
