@@ -19,6 +19,7 @@ class MAE(nn.Module):
         decoder_num_heads: int,
         decoder_mlp_dim: int,
         mask_ratio: float,
+        n_classes: int,
     ):
         super().__init__()
         self.image_size = image_size
@@ -60,6 +61,10 @@ class MAE(nn.Module):
         self.decoder_inv_proj = nn.Linear(
             in_features=decoder_hidden_dim,
             out_features=3*patch_size**2,
+        )
+        self.classifier = nn.Linear(
+            in_features=encoder_hidden_dim,
+            out_features=n_classes
         )
 
     def patches(self, x):
@@ -120,10 +125,12 @@ class MAE(nn.Module):
         return x, masked_indices
 
     def classify(self, x):
-        return self.classifier(self.encoder_forward(x))
+        x, _ = self.encoder_forward(x)
+        x = x[:, 0]
+        return self.classifier(x)
 
 
-def small_model(image_size, patch_size, mask_ratio, weight_path=None):
+def small_model(image_size, patch_size, mask_ratio, n_classes, weight_path=None):
     model = MAE(
         image_size=image_size,
         patch_size=patch_size,
@@ -136,6 +143,7 @@ def small_model(image_size, patch_size, mask_ratio, weight_path=None):
         decoder_hidden_dim=64,
         decoder_mlp_dim=256,
         mask_ratio=mask_ratio,
+        n_classes=n_classes
     )
     if weight_path:
         print(f"Loading model from '{weight_path}'... ", end='')

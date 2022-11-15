@@ -51,7 +51,7 @@ def mask_from_patches(masked_indices, image_size, patch_size):
 def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
     trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE, size=size)
 
-    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, model_path).to(DEVICE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, 10, model_path).to(DEVICE)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(BETA_1, BETA_2))
     #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
@@ -111,6 +111,61 @@ def test(model_path):
     print(f"Test loss: {get_loss_from_dataloader(model, testloader, image_size, True):.7f}")
 
 
+def finetune(model_path=None, epochs=10, size=None):
+    trainloader, image_size = cifar(train=True, batch_size=BATCH_SIZE, size=size)
+
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, 10, model_path).to(DEVICE)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(BETA_1, BETA_2))
+    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+
+    losses = []
+    for epoch in range(1, epochs):
+        with tqdm(trainloader, unit="batches") as tepoch:
+            for data, targets in tepoch:
+                tepoch.set_description(f"Epoch {epoch:4d}")
+
+                inputs = data.to(DEVICE)
+                optimizer.zero_grad()
+                outputs = model.classify(inputs)
+                
+                loss = criterion(outputs, targets)
+                loss.backward()
+                optimizer.step()
+                losses.append(loss.item())
+
+                tepoch.set_postfix(
+                    ma_loss=f"{sum(losses[-10:]) / 10:.5f}",
+                    acc=f"{torch.sum(outputs.argmax(dim=1) == targets) / targets.shape[0]:.3f}"
+                )
+            
+            #scheduler.step()
+
+    print(f"Saving model at '{model_path}'... ", end='')
+    torch.save(model.state_dict(), model_path)
+    print("Save sucessful!")
+
+    plt.plot(losses)
+    plt.savefig("imgs/loss")
+
+def test_classify(model_path):
+    testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
+    model = small_model(image_size, PATCH_SIZE, MASK_RATIO, 10, model_path).to(DEVICE)
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for data, targets in testloader:
+            inputs = data.to(DEVICE)
+            outputs = model.classify(inputs)
+            correct += torch.sum(outputs.argmax(dim=1) == targets)
+            total += targets.shape[0]
+
+    print(f"Test accuracy: {correct / total:.3f}")
+
+
 if __name__ == "__main__":
-    train(model_path=WEIGHT_PATH, epochs=200, plot_example_interval=100, size=100)
+    train(model_path=WEIGHT_PATH, epochs=200, plot_example_interval=100, size=1600)
     #test(model_path=WEIGHT_PATH)
+    #finetune(model_path=WEIGHT_PATH, epochs=10, size=1000)
+    #test_classify(model_path=WEIGHT_PATH)
