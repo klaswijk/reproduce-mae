@@ -8,14 +8,14 @@ from data import cifar
 from mae import small_model
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-WEIGHT_PATH = "weights/cifar_mae.pth"
+WEIGHT_PATH = "cifar_mae.pth"
 
 # Model
 PATCH_SIZE = 4
 MASK_RATIO = 0.5
 
 # Optimizer
-BATCH_SIZE = 16
+BATCH_SIZE = 512
 LR = 0.001
 BETA_1 = 0.9
 BETA_2 = 0.999
@@ -71,11 +71,11 @@ def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
                 optimizer.step()
                 losses.append(loss.item())
                 tepoch.set_postfix(ma_loss=f"{sum(losses[-10:]) / 10:.5f}")
-            
+
             #scheduler.step()
 
         if epoch % plot_example_interval == 0:
-            plot_comparison(inputs, outputs, mask, path=f"imgs/epoch_{epoch}")
+            plot_comparison(inputs, outputs, mask, path=f"epoch_{epoch}")
             #val_loss = get_loss_from_dataloader(model, valloader, image_size, True)
             #print(f"Validation loss: {val_loss:.7f}")
 
@@ -84,7 +84,7 @@ def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
     print("Save sucessful!")
 
     plt.plot(losses)
-    plt.savefig("imgs/loss")
+    plt.savefig("loss")
 
 
 def get_loss_from_dataloader(model, dataloader, image_size, plot=False):
@@ -126,9 +126,10 @@ def finetune(model_path=None, epochs=10, size=None):
                 tepoch.set_description(f"Epoch {epoch:4d}")
 
                 inputs = data.to(DEVICE)
+                targets = targets.to(DEVICE)
                 optimizer.zero_grad()
                 outputs = model.classify(inputs)
-                
+
                 loss = criterion(outputs, targets)
                 loss.backward()
                 optimizer.step()
@@ -138,7 +139,7 @@ def finetune(model_path=None, epochs=10, size=None):
                     ma_loss=f"{sum(losses[-10:]) / 10:.5f}",
                     acc=f"{torch.sum(outputs.argmax(dim=1) == targets) / targets.shape[0]:.3f}"
                 )
-            
+
             #scheduler.step()
 
     print(f"Saving model at '{model_path}'... ", end='')
@@ -146,7 +147,8 @@ def finetune(model_path=None, epochs=10, size=None):
     print("Save sucessful!")
 
     plt.plot(losses)
-    plt.savefig("imgs/loss")
+    plt.savefig("loss")
+
 
 def test_classify(model_path):
     testloader, image_size = cifar(train=False, batch_size=BATCH_SIZE)
@@ -157,6 +159,7 @@ def test_classify(model_path):
     with torch.no_grad():
         for data, targets in testloader:
             inputs = data.to(DEVICE)
+            targets = targets.to(DEVICE)
             outputs = model.classify(inputs)
             correct += torch.sum(outputs.argmax(dim=1) == targets)
             total += targets.shape[0]
