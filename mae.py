@@ -25,7 +25,7 @@ class MAE(nn.Module):
         self.seq_length = (image_size // patch_size) ** 2
         self.mask_length = int((1 - mask_ratio) * self.seq_length)
         self.encoder = Transformer(
-            self.mask_length,
+            self.mask_length + 1,
             encoder_layers,
             encoder_num_heads,
             encoder_hidden_dim,
@@ -45,6 +45,7 @@ class MAE(nn.Module):
         self.patch_size = patch_size
         self.encoder_hidden_dim = encoder_hidden_dim
         self.decoder_hidden_dim = decoder_hidden_dim
+        self.class_token = nn.Parameter(torch.zeros(1, 1, self.encoder_hidden_dim))
 
         self.encoder_conv_proj = nn.Conv2d(
             in_channels=3,
@@ -56,7 +57,7 @@ class MAE(nn.Module):
             in_features=encoder_hidden_dim,
             out_features=decoder_hidden_dim,
         )
-        self.decoder_inv_conv_proj = nn.Linear(
+        self.decoder_inv_proj = nn.Linear(
             in_features=decoder_hidden_dim,
             out_features=3*patch_size**2,
         )
@@ -79,29 +80,42 @@ class MAE(nn.Module):
 
     def encoder_forward(self, x):
         x = self.patches(x)
-        perm = torch.randperm(self.seq_length)
-        x = x[:, perm]
-        masked = x[:, :self.mask_length]
 
+        # Prepend class token
+        n = x.shape[0]
+        batch_class_token = self.class_token.expand(n, -1, -1)
+        x = torch.cat([batch_class_token, x], dim=1)
+
+        # Shuffle
+        perm = torch.randperm(self.seq_length) + 1
+        perm = torch.cat([torch.zeros(1, dtype=torch.long), perm])  # Always place the class token first
+        x = x[:, perm]
+        masked = x[:, :self.mask_length + 1]
+
+        # Encode
         masked = self.encoder(masked)
 
+        # Unshuffle
         x = torch.zeros_like(x)
-        x[:, perm[:self.mask_length]] = masked
-        return x, perm[:self.mask_length]
+        x[:, perm[:self.mask_length + 1]] = masked
+        return x, perm[1:self.mask_length + 1] - 1 # Don't include the class token in perm
 
     def decoder_forward(self, x):
+        # Decode
+        x = self.decoder(x)
+
+        # Project back to image
         n = x.shape[0]
         h = w = self.image_size
-
-        x = self.decoder(x)    
-        x = self.decoder_inv_conv_proj(x)
+        x = self.decoder_inv_proj(x)
         x = x.permute(0, 2, 1)
         x = x.reshape(n, 3, h, w)
         return x
 
     def forward(self, x):
         x, masked_indices = self.encoder_forward(x)
-        x = self.hidden_proj(x)
+        x = x[:, 1:]  # Remove class token
+        x = self.hidden_proj(x)  # Linear projection 
         x = self.decoder_forward(x)
         return x, masked_indices
 
@@ -115,12 +129,12 @@ def small_model(image_size, patch_size, mask_ratio, weight_path=None):
         patch_size=patch_size,
         encoder_layers=8,
         encoder_num_heads=8,
-        encoder_hidden_dim=128,
-        encoder_mlp_dim=512,
+        encoder_hidden_dim=256,
+        encoder_mlp_dim=1024,
         decoder_layers=4,
-        decoder_num_heads=4,
-        decoder_hidden_dim=32,
-        decoder_mlp_dim=128,
+        decoder_num_heads=8,
+        decoder_hidden_dim=64,
+        decoder_mlp_dim=256,
         mask_ratio=mask_ratio,
     )
     if weight_path:

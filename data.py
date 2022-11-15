@@ -8,7 +8,7 @@ class CocoMultilabel(CocoDetection):
     NotImplemented
 
 
-def cifar(train=True, batch_size=256):
+def cifar(train=True, batch_size=256, size=None):
     """Returns (dataloader, image_size)"""
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -21,7 +21,8 @@ def cifar(train=True, batch_size=256):
         transform=transform,
 
     )
-    dataset = Subset(dataset, range(1000))
+    if size:
+        dataset = Subset(dataset, range(size))
     dataloader = DataLoader(
         dataset, 
         batch_size=batch_size, 
