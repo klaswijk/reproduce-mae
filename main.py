@@ -8,14 +8,14 @@ from data import cifar
 from mae import small_model
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-WEIGHT_PATH = "cifar_mae.pth"
+WEIGHT_PATH = "weights/cifar_mae.pth"
 
 # Model
 PATCH_SIZE = 4
 MASK_RATIO = 0.5
 
 # Optimizer
-BATCH_SIZE = 512
+BATCH_SIZE = 16
 LR = 0.001
 BETA_1 = 0.9
 BETA_2 = 0.999
@@ -75,7 +75,7 @@ def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
             #scheduler.step()
 
         if epoch % plot_example_interval == 0:
-            plot_comparison(inputs, outputs, mask, path=f"epoch_{epoch}")
+            plot_comparison(inputs, outputs, mask, path=f"imgs/epoch_{epoch}")
             #val_loss = get_loss_from_dataloader(model, valloader, image_size, True)
             #print(f"Validation loss: {val_loss:.7f}")
 
@@ -84,7 +84,7 @@ def train(model_path=None, epochs=10, plot_example_interval=2, size=None):
     print("Save sucessful!")
 
     plt.plot(losses)
-    plt.savefig("loss")
+    plt.savefig("imgs/loss")
 
 
 def get_loss_from_dataloader(model, dataloader, image_size, plot=False):
@@ -147,7 +147,7 @@ def finetune(model_path=None, epochs=10, size=None):
     print("Save sucessful!")
 
     plt.plot(losses)
-    plt.savefig("loss")
+    plt.savefig("imgs/loss")
 
 
 def test_classify(model_path):
@@ -168,7 +168,7 @@ def test_classify(model_path):
 
 
 if __name__ == "__main__":
-    train(model_path=WEIGHT_PATH, epochs=200, plot_example_interval=100, size=1600)
+    train(model_path=WEIGHT_PATH, epochs=10, plot_example_interval=5, size=1600)
     #test(model_path=WEIGHT_PATH)
     #finetune(model_path=WEIGHT_PATH, epochs=10, size=1000)
     #test_classify(model_path=WEIGHT_PATH)

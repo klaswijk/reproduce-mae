@@ -1,7 +1,71 @@
 import os
+import math
+from collections import OrderedDict
+from functools import partial
+from typing import Callable
+
 import torch
-from torch import nn
-from torchvision.models.vision_transformer import Encoder as Transformer
+import torch.nn as nn
+
+from torchvision.models.vision_transformer import EncoderBlock
+
+
+class Transformer(nn.Module):
+    """Based on torchvision.models.vision_transformer.Encoder
+       Transformer Model for sequence to sequence translation."""
+
+    def __init__(
+        self,
+        seq_length: int,
+        num_layers: int,
+        num_heads: int,
+        hidden_dim: int,
+        mlp_dim: int,
+        dropout: float,
+        attention_dropout: float,
+        norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
+    ):
+        super().__init__()
+        # Note that batch_size is on the first dim because
+        # we have batch_first=True in nn.MultiAttention() by default
+        self.dropout = nn.Dropout(dropout)
+        layers: OrderedDict[str, nn.Module] = OrderedDict()
+        for i in range(num_layers):
+            layers[f"encoder_layer_{i}"] = EncoderBlock(
+                num_heads,
+                hidden_dim,
+                mlp_dim,
+                dropout,
+                attention_dropout,
+                norm_layer,
+            )
+        self.layers = nn.Sequential(layers)
+        self.ln = norm_layer(hidden_dim)
+
+    def forward(self, input: torch.Tensor):
+        return self.ln(self.layers(self.dropout(input)))
+
+
+class PositionalEncoding(nn.Module):
+    """Based on https://pytorch.org/tutorials/beginner/transformer_tutorial.html"""
+
+    def __init__(self, d_model: int, seq_len: int):
+        super().__init__()
+
+        position = torch.arange(seq_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(seq_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:d
+            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+        """
+        x = x + self.pe[:x.size(0)]
+        return x
 
 
 class MAE(nn.Module):
@@ -25,6 +89,8 @@ class MAE(nn.Module):
         self.image_size = image_size
         self.seq_length = (image_size // patch_size) ** 2
         self.mask_length = int((1 - mask_ratio) * self.seq_length)
+        self.encoder_pos_encoding = PositionalEncoding(encoder_hidden_dim, self.seq_length)
+        self.decoder_pos_encoding = PositionalEncoding(decoder_hidden_dim, self.seq_length)
         self.encoder = Transformer(
             self.mask_length + 1,
             encoder_layers,
@@ -90,6 +156,9 @@ class MAE(nn.Module):
         n = x.shape[0]
         batch_class_token = self.class_token.expand(n, -1, -1)
         x = torch.cat([batch_class_token, x], dim=1)
+        
+        # Add positional embedding
+        x = self.encoder_pos_encoding(x)
 
         # Shuffle
         perm = torch.randperm(self.seq_length) + 1
@@ -107,6 +176,7 @@ class MAE(nn.Module):
 
     def decoder_forward(self, x):
         # Decode
+        x = self.decoder_pos_encoding(x)
         x = self.decoder(x)
 
         # Project back to image
