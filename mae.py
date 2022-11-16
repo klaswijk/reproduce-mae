@@ -73,6 +73,7 @@ class MAE(nn.Module):
     def __init__(
         self,
         image_size: int,
+        n_classes: int,
         patch_size: int,
         encoder_layers: int,
         encoder_hidden_dim: int,
@@ -83,14 +84,15 @@ class MAE(nn.Module):
         decoder_num_heads: int,
         decoder_mlp_dim: int,
         mask_ratio: float,
-        n_classes: int,
     ):
         super().__init__()
         self.image_size = image_size
         self.seq_length = (image_size // patch_size) ** 2
-        self.mask_length = int((1 - mask_ratio) * self.seq_length)
+        self.mask_ratio = mask_ratio
+        self.mask_length = int((1 - self.mask_ratio) * self.seq_length)
         self.encoder_pos_encoding = PositionalEncoding(encoder_hidden_dim, self.seq_length + 1)
         self.decoder_pos_encoding = PositionalEncoding(decoder_hidden_dim, self.seq_length)
+
         self.encoder = Transformer(
             self.mask_length + 1,
             encoder_layers,
@@ -194,32 +196,23 @@ class MAE(nn.Module):
         x = self.decoder_forward(x)
         return x, masked_indices
 
+    def unmasked_encoder_forward(self, x):
+        x = self.patches(x)
+
+        # Prepend class token
+        n = x.shape[0]
+        batch_class_token = self.class_token.expand(n, -1, -1)
+        x = torch.cat([batch_class_token, x], dim=1)
+        
+        # Add positional embedding
+        x = self.encoder_pos_encoding(x)
+
+        # Encode
+        x = self.encoder(x)
+
+        return x[:, 0]
+
     def classify(self, x):
-        x, _ = self.encoder_forward(x)
-        x = x[:, 0]
+        x = self.unmasked_encoder_forward(x)
         return self.classifier(x)
 
-
-def small_model(image_size, patch_size, mask_ratio, n_classes, weight_path=None):
-    model = MAE(
-        image_size=image_size,
-        patch_size=patch_size,
-        encoder_layers=8,
-        encoder_num_heads=8,
-        encoder_hidden_dim=256,
-        encoder_mlp_dim=1024,
-        decoder_layers=4,
-        decoder_num_heads=8,
-        decoder_hidden_dim=64,
-        decoder_mlp_dim=256,
-        mask_ratio=mask_ratio,
-        n_classes=n_classes
-    )
-    if weight_path:
-        print(f"Loading model from '{weight_path}'... ", end='')
-        if os.path.exists(weight_path):
-            model.load_state_dict(torch.load(weight_path))
-            print("Load successful!")
-        else:
-            print(f"No weights found")
-    return model
