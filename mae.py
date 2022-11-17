@@ -134,13 +134,16 @@ class MAE(nn.Module):
 
     def encoder_forward(self, x: torch.Tensor, mask: bool) -> tuple:
         x = self.patch(x)
-        batch_class_token = self.class_token.expand(x.shape[0], -1, -1)
-        x = torch.cat([batch_class_token, x], dim=1)
+        x = torch.cat([self.class_token.expand(x.shape[0], -1, -1), x], dim=1)
         x = self.encoder_pos_encoding(x)
-        masked, perm = self.mask(x)
-        masked = self.encoder(masked)
-        x = self.unmask(x, masked, perm)
-        return x, perm[1:self.mask_length + 1] - 1 # Don't include the class token in perm
+        if mask:
+            masked, perm = self.mask(x)
+            masked = self.encoder(masked)
+            x = self.unmask(x, masked, perm)
+            return x, perm[1:self.mask_length + 1] - 1 # Don't include the class token in perm
+        else:
+            x = self.encoder(x)
+            return x, None
 
     def decoder_forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.decoder_pos_encoding(x)
@@ -149,18 +152,14 @@ class MAE(nn.Module):
         return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x, masked_indices = self.encoder_forward(x)
+        x, masked_indices = self.encoder_forward(x, True)
         x = x[:, 1:]  # Remove class token
         x = self.hidden_proj(x)
         x = self.decoder_forward(x)
         return x, masked_indices
 
     def classify(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.patch(x)
-        batch_class_token = self.class_token.expand(x.shape[0], -1, -1)
-        x = torch.cat([batch_class_token, x], dim=1)
-        x = self.encoder_pos_encoding(x)
-        x = self.encoder(x)
+        x, _ = self.encoder_forward(x, False)
         x = x[:, 0]  # Extract class token  
         x = self.classifier(x)
         return x
