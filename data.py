@@ -22,12 +22,13 @@ def cifar(train, batch_size, device, limit=-1):
         download=True,
         transform=transform
     )
-    if limit > 0:
+    if limit and limit > -1:
         dataset = Subset(dataset, range(limit))
     dataloader = DataLoader(
         dataset, 
         batch_size=batch_size, 
-        shuffle=True, 
+        shuffle=True,
+        num_workers=4,
         pin_memory=str(device) != "cpu",
         pin_memory_device=str(device) if str(device) != "cpu" else ""
     )

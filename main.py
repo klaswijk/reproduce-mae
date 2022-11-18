@@ -54,7 +54,7 @@ def main():
 
     if args.checkpoint:
         # Continue from checkpoint if specified
-        checkpoint = torch.load(args.checkpoint)
+        checkpoint = torch.load(args.checkpoint, map_location=device)
         config = checkpoint["config"]
         torch.set_rng_state(checkpoint["random_state"])
     elif args.config:
