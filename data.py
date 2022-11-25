@@ -14,8 +14,13 @@ info = {
 
 
 class ImageNetteDataset(Dataset):
-    def __init__(self, path, transform=None, target_transform=None):
+    def __init__(self, path, transform=None, target_transform=None, test=False):
+        # Should have 10000 train and 3395 val ("test") images
         self.img_labels = read_csv(path + "noisy_imagenette.csv")
+        if test:
+            self.img_labels = self.img_labels[:10000]
+        else:
+            self.img_labels = self.img_labels[10000:]
         self.img_dir = path
         self.transform = transform
         self.target_transform = target_transform
@@ -102,7 +107,8 @@ def imagenette(train, device, checkpoint):
         dataset = ImageNetteDataset(
             data_path + "/imagenette2-160/",
             transform=transform,
-            target_transform=target_transform
+            target_transform=target_transform,
+            test=True
         )
         testloader = DataLoader(
             dataset,
