@@ -12,7 +12,7 @@
 echo "Starting job ${SLURM_JOB_ID} on ${SLURMD_NODENAME}"
 nvidia-smi
 
-conda activate mae 
+/Midgard/home/rickym/miniconda3/bin/conda activate mae 
 
 echo "pre-traning"
 /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
