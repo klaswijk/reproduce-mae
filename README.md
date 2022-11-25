@@ -18,4 +18,3 @@ Test classification
 ```
 python main.py --test-classification --checkpoint checkpoints/cifar10_finetune_epoch_100.pth 
 ```
-
