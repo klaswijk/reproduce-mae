@@ -20,10 +20,10 @@ python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
     --config /Midgard/home/rickym/reproduce-mae/configs/cifar10.yaml \
     --id ${SLURM_JOB_ID} \
     --epochs ${epochs} \
-    --checkpoint-frequency ${checkpoint-frequency} \
+    --checkpoint-frequency ${checkpoint_frequency} \
     --log_image_ingerval ${log_image_ingerval} \ 
-    --data-path ${data-path} \ 
-    --output-path ${output-path} \ 
+    --data-path ${data_path} \ 
+    --output-path ${output_path} \ 
 
 
 echo "Finished"
