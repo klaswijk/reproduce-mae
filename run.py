@@ -36,7 +36,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain", exist_ok=True)
 
     wandb.init(config=config, name=id + "_pretrain_" +
-               str(datetime.datetime.now()))
+               str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = MSELoss()
