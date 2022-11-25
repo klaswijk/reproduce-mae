@@ -1,6 +1,6 @@
 
 # 345961
-sbatch --export epochs=100,checkpoint_frequency=10,log_image_ingerval=2,data_path=/local_storage/datasets/cifar-10-batches-py,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/run_scripts/run_train_test.sbatch
+sbatch --export epochs=100,checkpoint_frequency=10,log_image_ingerval=2,data_path=/local_storage/datasets/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
 
 
 dataset path: /local_storage/datasets
