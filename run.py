@@ -83,7 +83,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             wandb.log({"reconstruction": images},
                       step=epoch)
 
-        if epoch % log_image_ingerval == 0 or epoch == epochs - 1:
+        if epoch % log_image_ingerval == 0:
             output[:4, :, ~mask] = input[:4, :, ~mask]
             images = wandb.Image(output[:4, :, :], caption="Reconstruction")
             wandb.log({"reconstruction": images},

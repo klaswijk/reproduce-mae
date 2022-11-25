@@ -2,6 +2,7 @@
 # 345961
 sbatch --export epochs=100,checkpoint_frequency=10,log_image_ingerval=2,data_path=/local_storage/datasets/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
 
+sbatch --export epochs=2000,checkpoint_frequency=100,log_image_ingerval=100,data_path=/local_storage/datasets/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
 
 dataset path: /local_storage/datasets
 output path: /local_storage/users/rickym/models
