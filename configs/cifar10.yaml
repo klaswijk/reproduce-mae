@@ -1,6 +1,7 @@
 data:
     dataset: "cifar10"
     limit: -1  # Limit number of examples. -1 = use all data
+    val_ratio: 0.2
 model:  # MAE
     patch_size: 4
     mask_ratio: 0.5
