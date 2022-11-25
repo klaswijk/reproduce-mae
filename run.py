@@ -49,6 +49,9 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
+    wandb.config.update({"number of train samples": len(
+        trainloader.dataset), "number of validation samples": len(valloader.dataset)})
+
     start = checkpoint["pretrain_epoch"] + 1
     for epoch in range(start, start + epochs):
         epoch_train_loss = 0
