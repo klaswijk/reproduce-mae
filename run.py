@@ -5,7 +5,7 @@ import wandb
 
 from torch.nn import MSELoss, CrossEntropyLoss, UpsamplingNearest2d
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from mae import MAE
 from data import info, get_dataloader
@@ -43,7 +43,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     optimizer = Adam(model.parameters(), **config["optimizer"])
-    scheduler = ExponentialLR(optimizer, **config["scheduler"])
+    scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
@@ -164,7 +164,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     optimizer = Adam(model.parameters(), **config["optimizer"])
-    scheduler = ExponentialLR(optimizer, **config["scheduler"])
+    scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     if checkpoint["finetune_epoch"] != 0:

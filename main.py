@@ -4,7 +4,7 @@ import yaml
 import torch
 
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import run
 
@@ -17,7 +17,7 @@ def initialize(config):
     image_size, n_classes = info[config["data"]["dataset"]]
     model = MAE(image_size, n_classes, **config["model"])
     optimizer = Adam(model.parameters(), **config["optimizer"])
-    scheduler = ExponentialLR(optimizer, **config["scheduler"])
+    scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     return {
         "config": config,
         "random_state": torch.get_rng_state(),
