@@ -5,6 +5,7 @@ Reproduction of "Masked Autoencoders Are Scalable Vision Learners"
 Pretrain
 ```
 python main.py --pretrain --config configs/cifar10.yaml --epochs 100 --checkpoint-frequency 10
+python main.py --pretrain --config configs/imagenette.yaml --epochs 10 --id dev --checkpoint-frequency 10 --log_image_ingerval 2
 ```
 Test reconstruction
 ```

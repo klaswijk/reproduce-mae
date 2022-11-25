@@ -70,11 +70,13 @@ def imagenette(train, device, checkpoint):
             target_transform=target_transform
         )
 
-        if limit and limit > -1:
-            dataset = Subset(dataset, range(limit))
-
         idx = np.array(list(range(len(dataset))))
         np.random.shuffle(idx)
+
+        if limit and limit > -1:
+            dataset = Subset(dataset, idx[:limit])
+            idx = np.array(list(range(len(dataset))))
+            np.random.shuffle(idx)
 
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
