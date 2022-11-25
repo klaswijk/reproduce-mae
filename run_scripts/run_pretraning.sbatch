@@ -17,7 +17,7 @@ conda activate mae
 
 echo "pre-traning"
 python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
-    --config /Midgard/home/rickym/reproduce-mae/configs/cifar10.yaml \
+    --config /Midgard/home/rickym/reproduce-mae/configs/${config} \
     --id ${SLURM_JOB_ID} \
     --epochs ${epochs} \
     --checkpoint-frequency ${checkpoint_frequency} \
