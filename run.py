@@ -1,10 +1,11 @@
 import os
+import datetime
 import torch
+import wandb
 
 from torch.nn import MSELoss, CrossEntropyLoss, UpsamplingNearest2d
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
-from tqdm import tqdm
 
 from mae import MAE
 from data import info, get_dataloader
@@ -25,7 +26,7 @@ def save_checkpoint(path, checkpoint, **updates):
     torch.save(checkpoint, path)
 
 
-def pretrain(checkpoint, epochs, device, checkpoint_frequency):
+def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     patch_size = config["model"]["patch_size"]
@@ -33,10 +34,12 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency):
     image_size, n_classes = info[dataset]
 
     os.makedirs(f"checkpoints/{dataset}/pretrain", exist_ok=True)
-    os.makedirs(f"plots/{dataset}/reconstruction/train/", exist_ok=True)
-    os.makedirs(f"plots/{dataset}/loss/pretrain", exist_ok=True)
 
-    trainloader = get_dataloader(dataset, True, batch_size, device, config["data"]["limit"])
+    wandb.init(config=config, name=id + "_pretrain_" +
+               str(datetime.datetime.now()))
+
+    trainloader, valloader = get_dataloader(
+        dataset, True, batch_size, device, config["data"]["limit"])
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -44,34 +47,44 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency):
     scheduler = ExponentialLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])    
+    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-    training_loss = checkpoint["pretrain_training_loss"]
-
+    print("start")
     start = checkpoint["pretrain_epoch"] + 1
     for epoch in range(start, start + epochs):
-        epoch_loss = 0
-        with tqdm(trainloader, unit="batches") as pbar:
-            for i, (input, _) in enumerate(pbar, start=1):
-                optimizer.zero_grad()
+        epoch_train_loss = 0
+        epoch_val_loss = 0
 
+        for input, _ in trainloader:
+            input = input.to(device)
+            optimizer.zero_grad()
+
+            output, masked_indices = model(input)
+            mask = mask_from_patches(
+                masked_indices, image_size, patch_size)
+            loss = criterion(input[:, :, mask], output[:, :, mask])
+
+            loss.backward()
+            optimizer.step()
+            epoch_train_loss += loss.item()
+
+        with torch.no_grad():
+            for input, _ in trainloader:
+                input = input.to(device)
                 output, masked_indices = model(input)
-                mask = mask_from_patches(masked_indices, image_size, patch_size)
+                mask = mask_from_patches(
+                    masked_indices, image_size, patch_size)
                 loss = criterion(input[:, :, mask], output[:, :, mask])
+                epoch_val_loss += loss.item()
 
-                loss.backward()
-                optimizer.step()
-
-                training_loss.append(loss.item())
-                epoch_loss = (epoch_loss * (i-1) + loss.item()) / i
-
-                pbar.set_description(f"Epoch {epoch:4d}")
-                pbar.set_postfix(MSE=f"{epoch_loss:.5f}")
+        epoch_train_loss /= len(trainloader)
+        epoch_val_loss /= len(valloader)
+        wandb.log({"epoch": epoch, "train_mse": epoch_train_loss,
+                  "val_mse": epoch_val_loss})
 
         scheduler.step()
 
         if epoch % checkpoint_frequency == 0:
-            
             save_checkpoint(
                 f"checkpoints/{dataset}/pretrain/epoch_{epoch}.pth",
                 checkpoint,
@@ -80,17 +93,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency):
                 optimizer_state_dict=optimizer.state_dict(),
                 scheduler_state_dict=scheduler.state_dict(),
                 pretrain_epoch=epoch,
-                pretrain_training_loss=training_loss
             )
-            plot_reconstruction(
-                f"plots/{dataset}/reconstruction/train/epoch_{epoch}.png",
-                input, output, mask
-            )
-    
-    plot_loss(
-        f"plots/{dataset}/loss/pretrain/epoch_{epoch}.png",
-        training_loss
-    )
 
 
 def test_reconstruction(checkpoint, device):
@@ -108,35 +111,38 @@ def test_reconstruction(checkpoint, device):
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
-    
+
     with torch.no_grad():
         total_loss = 0
 
         for input, _ in testloader:
+            input = input.to(device)
             output, masked_indices = model(input)
             mask = mask_from_patches(masked_indices, image_size, patch_size)
             loss = criterion(input[:, :, mask], output[:, :, mask])
             total_loss += loss.item()
-    
+
     epoch = checkpoint["pretrain_epoch"]
     plot_reconstruction(
-            input, output, mask, 
-            path=f"plots/{dataset}/reconstruction/test/epoch_{epoch}.png"
+        f"plots/{dataset}/reconstruction/test/epoch_{epoch}.png",
+        input, output, mask
     )
 
     print(f"Test loss: {total_loss / len(testloader)}")
 
 
-def finetune(checkpoint, epochs, device, checkpoint_frequency):
+def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
 
     os.makedirs(f"checkpoints/{dataset}/finetune", exist_ok=True)
-    os.makedirs(f"plots/{dataset}/loss/finetune/", exist_ok=True)
 
-    trainloader = get_dataloader(
+    wandb.init(config=config, name=id + "_finetune_" +
+               str(datetime.datetime.now()))
+
+    trainloader, valloader = get_dataloader(
         dataset, True, batch_size, device, config["data"]["limit"]
     )
     criterion = CrossEntropyLoss()
@@ -145,30 +151,40 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency):
     optimizer = Adam(model.parameters(), **config["optimizer"])
     scheduler = ExponentialLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])    
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     if checkpoint["finetune_epoch"] != 0:
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-    training_loss = checkpoint["finetune_training_loss"]
-
     start = checkpoint["finetune_epoch"] + 1
     for epoch in range(start, start + epochs):
-        epoch_loss = 0
-        with tqdm(trainloader, unit="batches") as pbar:
-            for i, (input, target) in enumerate(pbar, start=1):
-                optimizer.zero_grad()
+        epoch_train_loss = 0
+        epoch_val_loss = 0
 
+        for input, target in trainloader:
+            input = input.to(device)
+            target = target.to(device)
+            optimizer.zero_grad()
+
+            output = model.classify(input)
+            loss = criterion(output, target)
+
+            loss.backward()
+            optimizer.step()
+
+            epoch_train_loss = loss.item()
+
+        with torch.no_grad():
+            for input, target in trainloader:
+                input = input.to(device)
+                target = target.to(device)
                 output = model.classify(input)
                 loss = criterion(output, target)
+                epoch_val_loss = loss.item()
 
-                loss.backward()
-                optimizer.step()
-
-                training_loss.append(loss.item())
-                epoch_loss = (epoch_loss * (i-1) + loss.item()) / i
-
-                pbar.set_description(f"Epoch {epoch:4d}")
-                pbar.set_postfix(CE=epoch_loss)
+        epoch_train_loss /= len(trainloader)
+        epoch_val_loss /= len(valloader)
+        wandb.log({"epoch": epoch, "train_ce": epoch_train_loss,
+                  "val_ce": epoch_val_loss})
 
         scheduler.step()
 
@@ -181,13 +197,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency):
                 optimizer_state_dict=optimizer.state_dict(),
                 scheduler_state_dict=scheduler.state_dict(),
                 finetune_epoch=epoch,
-                finetune_training_loss=training_loss
             )
-    
-    plot_loss(
-        f"plots/{dataset}/loss/finetune/epoch_{epoch}.png",
-        training_loss
-    )
 
 
 def test_classification(checkpoint, device):
@@ -206,6 +216,8 @@ def test_classification(checkpoint, device):
     total = 0
     with torch.no_grad():
         for input, targets in testloader:
+            input = input.to(device)
+            target = target.to(device)
             output = model.classify(input)
             correct += torch.sum(output.argmax(dim=1) == targets)
             total += len(targets)

@@ -24,15 +24,38 @@ def cifar(train, batch_size, device, limit=-1):
     )
     if limit and limit > -1:
         dataset = Subset(dataset, range(limit))
-    dataloader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        shuffle=True,
-        num_workers=4,
-        pin_memory=str(device) != "cpu",
-        pin_memory_device=str(device) if str(device) != "cpu" else ""
-    )
-    return dataloader
+
+    idx = list(range(len(dataset)))
+    if train:
+        valset = Subset(dataset, idx[-10000:])
+        trainset = Subset(dataset, idx[:-10000])
+        trainloader = DataLoader(
+            trainset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        valloader = DataLoader(
+            valset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        return trainloader, valloader
+    else:
+        testloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        return testloader
 
 
 def get_dataloader(dataset, train, batch_size, device, limit=None):

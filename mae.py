@@ -23,7 +23,8 @@ class Transformer(nn.Module):
         mlp_dim: int,
         dropout: float = 0.0,
         attention_dropout: float = 0.0,
-        norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
+        norm_layer: Callable[..., torch.nn.Module] = partial(
+            nn.LayerNorm, eps=1e-6),
     ):
         super().__init__()
         # Note that batch_size is on the first dim because
@@ -55,7 +56,8 @@ class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, seq_len: int):
         super().__init__()
         position = torch.arange(seq_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(torch.arange(0, d_model, 2)
+                             * (-math.log(10000.0) / d_model))
         pe = torch.zeros(1, seq_len, d_model)
         pe[0, :, 0::2] = torch.sin(position * div_term)
         pe[0, :, 1::2] = torch.cos(position * div_term)
@@ -94,23 +96,29 @@ class MAE(nn.Module):
         self.mask_length = int((1 - mask_ratio) * self.seq_length)
 
         # Encoder
-        self.encoder_proj = nn.Conv2d(3, encoder_hidden_dim, patch_size, patch_size)
-        self.encoder_pos_encoding = PositionalEncoding(encoder_hidden_dim, self.seq_length + 1)
-        self.encoder = Transformer(encoder_layers, encoder_num_heads, encoder_hidden_dim, encoder_mlp_dim)
-        
+        self.encoder_proj = nn.Conv2d(
+            3, encoder_hidden_dim, patch_size, patch_size)
+        self.encoder_pos_encoding = PositionalEncoding(
+            encoder_hidden_dim, self.seq_length + 1)
+        self.encoder = Transformer(
+            encoder_layers, encoder_num_heads, encoder_hidden_dim, encoder_mlp_dim)
+
         # Decoder
         self.hidden_proj = nn.Linear(encoder_hidden_dim, decoder_hidden_dim)
-        self.decoder_pos_encoding = PositionalEncoding(decoder_hidden_dim, self.seq_length)
-        self.decoder = Transformer(decoder_layers, decoder_num_heads, decoder_hidden_dim, decoder_mlp_dim)
+        self.decoder_pos_encoding = PositionalEncoding(
+            decoder_hidden_dim, self.seq_length)
+        self.decoder = Transformer(
+            decoder_layers, decoder_num_heads, decoder_hidden_dim, decoder_mlp_dim)
         self.decoder_proj = nn.Linear(decoder_hidden_dim, 3 * patch_size**2)
-        
+
         # Classifier
         self.class_token = nn.Parameter(torch.zeros(1, 1, encoder_hidden_dim))
-        self.classifier = nn.Linear(encoder_hidden_dim, n_classes)    
+        self.classifier = nn.Linear(encoder_hidden_dim, n_classes)
 
     def patch(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder_proj(x)
-        x = x.reshape(x.shape[0], self.encoder_hidden_dim, (self.image_size // self.patch_size)**2)
+        x = x.reshape(x.shape[0], self.encoder_hidden_dim,
+                      (self.image_size // self.patch_size)**2)
         x = x.permute(0, 2, 1)
         return x
 
@@ -122,7 +130,8 @@ class MAE(nn.Module):
 
     def mask(self, x: torch.Tensor) -> tuple:
         perm = torch.randperm(self.seq_length) + 1
-        perm = torch.cat([torch.zeros(1, dtype=torch.long), perm])  # Class token at index 0
+        # Class token at index 0
+        perm = torch.cat([torch.zeros(1, dtype=torch.long), perm])
         x = x[:, perm]
         masked = x[:, :self.mask_length + 1]
         return masked, perm
@@ -140,7 +149,8 @@ class MAE(nn.Module):
             masked, perm = self.mask(x)
             masked = self.encoder(masked)
             x = self.unmask(x, masked, perm)
-            return x, perm[1:self.mask_length + 1] - 1 # Don't include the class token in perm
+            # Don't include the class token in perm
+            return x, perm[1:self.mask_length + 1] - 1
         else:
             x = self.encoder(x)
             return x, None
@@ -160,6 +170,6 @@ class MAE(nn.Module):
 
     def classify(self, x: torch.Tensor) -> torch.Tensor:
         x, _ = self.encoder_forward(x, False)
-        x = x[:, 0]  # Extract class token  
+        x = x[:, 0]  # Extract class token
         x = self.classifier(x)
         return x
