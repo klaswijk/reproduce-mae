@@ -22,8 +22,8 @@ python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
     --epochs ${epochs} \
     --checkpoint-frequency ${checkpoint_frequency} \
     --log_image_ingerval ${log_image_ingerval} \ 
-    --data-path ${data_path} \ 
-    --output-path ${output_path} \ 
+    --data-path ${data_path} \
+    --output-path ${output_path} \
 
 
 echo "Finished"
