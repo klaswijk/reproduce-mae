@@ -49,9 +49,6 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-    # wandb.watch(model, log_freq=1, log="all")
-
-    print("start")
     start = checkpoint["pretrain_epoch"] + 1
     for epoch in range(start, start + epochs):
         epoch_train_loss = 0
@@ -79,10 +76,21 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
                 loss = criterion(input[:, :, mask], output[:, :, mask])
                 epoch_val_loss += loss.item()
 
+        if epoch == 0:
+            images = wandb.Image(input)
+            wandb.log({"reconstruction": images},
+                      step=epoch, caption="True images")
+
+        if epoch % 10 == 0:
+            output[:4, :, ~mask] = input[:4, :, ~mask]
+            images = wandb.Image(output)
+            wandb.log({"reconstruction": images},
+                      step=epoch, caption="Reconstruction")
+
         epoch_train_loss /= len(trainloader)
         epoch_val_loss /= len(valloader)
         wandb.log({"epoch": epoch, "train_mse": epoch_train_loss,
-                  "val_mse": epoch_val_loss})
+                  "val_mse": epoch_val_loss}, step=epoch)
 
         scheduler.step()
 
