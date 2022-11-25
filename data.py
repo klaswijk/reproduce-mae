@@ -4,7 +4,7 @@ from pandas import read_csv
 from torch.utils.data import DataLoader, Subset, Dataset
 from torchvision import datasets, transforms
 from PIL import Image
-
+import numpy as np
 
 DatasetInfo = namedtuple("DatasetInfo", ["image_size", "n_classes"])
 info = {
@@ -73,7 +73,9 @@ def imagenette(train, device, checkpoint):
         if limit and limit > -1:
             dataset = Subset(dataset, range(limit))
 
-        idx = list(range(len(dataset)))
+        idx = np.array(list(range(len(dataset))))
+        np.random.shuffle(idx)
+
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
         trainset = Subset(dataset, idx[:-valsize])
@@ -131,8 +133,10 @@ def cifar(train, device, checkpoint):
     if limit and limit > -1:
         dataset = Subset(dataset, range(limit))
 
-    idx = list(range(len(dataset)))
     if train:
+        idx = np.array(list(range(len(dataset))))
+        np.random.shuffle(idx)
+
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
         trainset = Subset(dataset, idx[:-valsize])
