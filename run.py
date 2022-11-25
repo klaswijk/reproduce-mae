@@ -49,6 +49,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
+    # wandb.watch(model, log_freq=1, log="all")
+
     print("start")
     start = checkpoint["pretrain_epoch"] + 1
     for epoch in range(start, start + epochs):
