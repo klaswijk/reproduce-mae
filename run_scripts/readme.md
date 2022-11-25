@@ -16,3 +16,4 @@ code path: /Midgard/home/rickym/reproduce-mae
 
 # inspect results 
 salloc --gres=gpu:0 --mem=1GB --cpus-per-task=1 --constrain=smaug --time=1:00:00
+salloc --gres=gpu:1 --mem=1GB --cpus-per-task=1 --constrain=smaug --time=1:00:00
