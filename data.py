@@ -27,8 +27,9 @@ def cifar(train, batch_size, device, limit=-1):
 
     idx = list(range(len(dataset)))
     if train:
-        valset = Subset(dataset, idx[-10000:])
-        trainset = Subset(dataset, idx[:-10000])
+        valsize = int(0.1 * len(dataset))
+        valset = Subset(dataset, idx[-valsize:])
+        trainset = Subset(dataset, idx[:-valsize])
         trainloader = DataLoader(
             trainset,
             batch_size=batch_size,
