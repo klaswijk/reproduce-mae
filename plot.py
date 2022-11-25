@@ -15,14 +15,15 @@ def save_image(path, image):
 
 def plot_reconstruction(
     path,
-    true, 
-    reconstruction, 
-    mask, 
-    size=4, 
+    true,
+    reconstruction,
+    mask,
+    size=4,
 ):
     masked = torch.clone(true[:size])
     masked[:size, :, mask] = 0
-    reconstruction[:size, :, ~mask] = true[:size, :, ~mask]  # Transfer known patches
+    reconstruction[:size, :, ~mask] = true[:size,
+                                           :, ~mask]  # Transfer known patches
     combined = torch.vstack([masked, true[:size], reconstruction[:size]])
     save_image(path, utils.make_grid(combined, nrow=size))
 

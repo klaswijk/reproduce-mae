@@ -33,15 +33,17 @@ def initialize(config):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config")
-    parser.add_argument("--checkpoint")
+    settings = parser.add_mutually_exclusive_group()
+    settings.add_argument("--config")
+    settings.add_argument("--checkpoint")
+    task = parser.add_mutually_exclusive_group()
+    task.add_argument("--pretrain", action="store_true")
+    task.add_argument("--test-reconstruction", action="store_true")
+    task.add_argument("--finetune", action="store_true")
+    task.add_argument("--test-classification", action="store_true")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--checkpoint-frequency", type=int, default=100)
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--pretrain", action="store_true")
-    group.add_argument("--test-reconstruction", action="store_true")
-    group.add_argument("--finetune", action="store_true")
-    group.add_argument("--test-classification", action="store_true")
+    parser.add_argument("--id")
     return parser.parse_args()
 
 
@@ -66,26 +68,28 @@ def main():
     # Run the specified task
     if args.pretrain:
         run.pretrain(
-            checkpoint, 
-            args.epochs, 
-            device, 
-            args.checkpoint_frequency
+            checkpoint,
+            args.epochs,
+            device,
+            args.checkpoint_frequency,
+            args.id
         )
     elif args.test_reconstruction:
         run.test_reconstruction(
-            checkpoint, 
+            checkpoint,
             device,
         )
     elif args.finetune:
         run.finetune(
-            checkpoint, 
-            args.epochs, 
-            device, 
-            args.checkpoint_frequency
+            checkpoint,
+            args.epochs,
+            device,
+            args.checkpoint_frequency,
+            args.id
         )
     elif args.test_classification:
         run.test_classification(
-            checkpoint, 
+            checkpoint,
             device,
         )
 
