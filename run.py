@@ -92,8 +92,11 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
         epoch_train_loss /= len(trainloader)
         epoch_val_loss /= len(valloader)
-        wandb.log({"epoch": epoch, "train_mse": epoch_train_loss,
-                  "val_mse": epoch_val_loss}, step=epoch)
+        wandb.log({"epoch": epoch,
+                   "train_mse": epoch_train_loss,
+                   "val_mse": epoch_val_loss,
+                   "learning_rate": optimizer.param_groups[0]["lr"]
+                   }, step=epoch)
 
         scheduler.step()
 
