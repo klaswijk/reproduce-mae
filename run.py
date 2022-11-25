@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 from mae import MAE
 from data import info, get_dataloader
-from plot import plot_reconstruction, plot_loss
+from plot import plot_reconstruction
 
 
 def mask_from_patches(masked_indices, image_size, patch_size):
@@ -28,18 +28,17 @@ def save_checkpoint(path, checkpoint, **updates):
 
 def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ingerval):
     config = checkpoint["config"]
-    batch_size = config["batch_size"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
 
-    os.makedirs(f"checkpoints/{dataset}/pretrain", exist_ok=True)
+    os.makedirs(
+        f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain", exist_ok=True)
 
     wandb.init(config=config, name=id + "_pretrain_" +
                str(datetime.datetime.now()))
 
-    trainloader, valloader = get_dataloader(
-        dataset, True, batch_size, device, config["data"]["limit"], config["data"]["val_ratio"])
+    trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -84,7 +83,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             wandb.log({"reconstruction": images},
                       step=epoch)
 
-        if epoch % log_image_ingerval == 0 or epoch == epochs:
+        if epoch % log_image_ingerval == 0 or epoch == epochs - 1:
             output[:4, :, ~mask] = input[:4, :, ~mask]
             images = wandb.Image(output[:4, :, :], caption="Reconstruction")
             wandb.log({"reconstruction": images},
@@ -102,7 +101,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
         if epoch % checkpoint_frequency == 0:
             save_checkpoint(
-                f"checkpoints/{dataset}/pretrain/epoch_{epoch}.pth",
+                f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain/epoch_{epoch}.pth",
                 checkpoint,
                 random_state=torch.get_rng_state(),
                 model_state_dict=model.state_dict(),
@@ -119,9 +118,10 @@ def test_reconstruction(checkpoint, device):
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
 
-    os.makedirs(f"plots/{dataset}/reconstruction/test/", exist_ok=True)
+    os.makedirs(
+        f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/", exist_ok=True)
 
-    testloader = get_dataloader(dataset, False, batch_size, device)
+    testloader = get_dataloader(dataset, False, device, checkpoint)
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -140,7 +140,7 @@ def test_reconstruction(checkpoint, device):
 
     epoch = checkpoint["pretrain_epoch"]
     plot_reconstruction(
-        f"plots/{dataset}/reconstruction/test/epoch_{epoch}.png",
+        f"{checkpoint['output_path']}plots/{dataset}/reconstruction/test/epoch_{epoch}.png",
         input, output, mask
     )
 
@@ -153,14 +153,13 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
 
-    os.makedirs(f"checkpoints/{dataset}/finetune", exist_ok=True)
+    os.makedirs(
+        f"{checkpoint['output_path']}/checkpoints/{dataset}/finetune", exist_ok=True)
 
     wandb.init(config=config, name=id + "_finetune_" +
                str(datetime.datetime.now()))
 
-    trainloader, valloader = get_dataloader(
-        dataset, True, batch_size, device, config["data"]["limit"]
-    )
+    trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = CrossEntropyLoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -206,7 +205,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
 
         if epoch % checkpoint_frequency == 0:
             save_checkpoint(
-                f"checkpoints/{dataset}/finetune/epoch_{epoch}.pth",
+                f"{checkpoint['output_path']}/checkpoints/{dataset}/finetune/epoch_{epoch}.pth",
                 checkpoint,
                 random_state=torch.get_rng_state(),
                 model_state_dict=model.state_dict(),
@@ -222,7 +221,7 @@ def test_classification(checkpoint, device):
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
 
-    testloader = get_dataloader(dataset, False, batch_size, device)
+    testloader = get_dataloader(dataset, False, device, checkpoint)
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])

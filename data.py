@@ -10,14 +10,19 @@ info = {
 }
 
 
-def cifar(train, batch_size, device, limit=-1, val_ratio=0.1):
+def cifar(train, device, checkpoint):
     """Returns (dataloader, image_size)"""
+    data_path = checkpoint["data_path"]
+    limit = checkpoint["config"]["data"]["limit"]
+    val_ratio = checkpoint["config"]["data"]["val_ratio"]
+    batch_size = checkpoint["config"]["batch_size"]
+
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dataset = datasets.CIFAR10(
-        root='./data',
+        root=data_path,
         train=train,
         download=True,
         transform=transform
@@ -59,8 +64,9 @@ def cifar(train, batch_size, device, limit=-1, val_ratio=0.1):
         return testloader
 
 
-def get_dataloader(dataset, train, batch_size, device, limit=None, val_ratio=0.1):
+def get_dataloader(dataset, train, device, checkpoint):
     if dataset == "cifar10":
-        return cifar(train, batch_size, device, limit, val_ratio)
+
+        return cifar(train, device, checkpoint)
     else:
         raise ValueError(f"Unknown dataset '{dataset}'")

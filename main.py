@@ -25,9 +25,7 @@ def initialize(config):
         "optimizer_state_dict": optimizer.state_dict(),
         "scheduler_state_dict": scheduler.state_dict(),
         "pretrain_epoch": 0,
-        "pretrain_training_loss": [],
         "finetune_epoch": 0,
-        "finetune_training_loss": [],
     }
 
 
@@ -45,17 +43,17 @@ def parse_arguments():
     parser.add_argument("--checkpoint-frequency", type=int, default=100)
     parser.add_argument("--id")
     parser.add_argument("--log_image_ingerval", type=int, default=100)
+    parser.add_argument("--data-path", default="./data")
+    parser.add_argument("--output-path", default="./")
     return parser.parse_args()
 
 
-
-
 def main():
-    for dir in ["configs", "checkpoints", "plots"]:
-        os.makedirs(dir, exist_ok=True)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args = parse_arguments()
+
+    for dir in ["checkpoints", "plots"]:
+        os.makedirs(f"{args.output_path}{dir}", exist_ok=True)
 
     if args.checkpoint:
         # Continue from checkpoint if specified
@@ -67,6 +65,8 @@ def main():
         with open(args.config, "r") as f:
             config = yaml.safe_load(f)
         checkpoint = initialize(config)
+        checkpoint["data_path"] = args.data_path
+        checkpoint["output_path"] = args.output_path
 
     # Run the specified task
     if args.pretrain:
