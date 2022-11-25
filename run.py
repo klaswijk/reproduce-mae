@@ -26,7 +26,7 @@ def save_checkpoint(path, checkpoint, **updates):
     torch.save(checkpoint, path)
 
 
-def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
+def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ingerval):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     patch_size = config["model"]["patch_size"]
@@ -84,7 +84,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
             wandb.log({"reconstruction": images},
                       step=epoch)
 
-        if epoch % 1000 == 0:
+        if epoch % log_image_ingerval == 0 or epoch == epochs:
             output[:4, :, ~mask] = input[:4, :, ~mask]
             images = wandb.Image(output[:4, :, :], caption="Reconstruction")
             wandb.log({"reconstruction": images},

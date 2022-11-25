@@ -44,7 +44,10 @@ def parse_arguments():
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--checkpoint-frequency", type=int, default=100)
     parser.add_argument("--id")
+    parser.add_argument("--log_image_ingerval", type=int, default=100)
     return parser.parse_args()
+
+
 
 
 def main():
@@ -72,7 +75,8 @@ def main():
             args.epochs,
             device,
             args.checkpoint_frequency,
-            args.id
+            args.id,
+            args.log_image_ingerval
         )
     elif args.test_reconstruction:
         run.test_reconstruction(
