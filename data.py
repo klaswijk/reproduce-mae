@@ -10,7 +10,7 @@ info = {
 }
 
 
-def cifar(train, batch_size, device, limit=-1):
+def cifar(train, batch_size, device, limit=-1, val_ratio=0.1):
     """Returns (dataloader, image_size)"""
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -27,7 +27,7 @@ def cifar(train, batch_size, device, limit=-1):
 
     idx = list(range(len(dataset)))
     if train:
-        valsize = int(0.1 * len(dataset))
+        valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
         trainset = Subset(dataset, idx[:-valsize])
         trainloader = DataLoader(
@@ -59,8 +59,8 @@ def cifar(train, batch_size, device, limit=-1):
         return testloader
 
 
-def get_dataloader(dataset, train, batch_size, device, limit=None):
+def get_dataloader(dataset, train, batch_size, device, limit=None, val_ratio=0.1):
     if dataset == "cifar10":
-        return cifar(train, batch_size, device, limit)
+        return cifar(train, batch_size, device, limit, val_ratio)
     else:
         raise ValueError(f"Unknown dataset '{dataset}'")

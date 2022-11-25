@@ -39,7 +39,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
                str(datetime.datetime.now()))
 
     trainloader, valloader = get_dataloader(
-        dataset, True, batch_size, device, config["data"]["limit"])
+        dataset, True, batch_size, device, config["data"]["limit"], config["data"]["val_ratio"])
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -68,7 +68,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
             epoch_train_loss += loss.item()
 
         with torch.no_grad():
-            for input, _ in trainloader:
+            for input, _ in valloader:
                 input = input.to(device)
                 output, masked_indices = model(input)
                 mask = mask_from_patches(
@@ -76,16 +76,16 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id):
                 loss = criterion(input[:, :, mask], output[:, :, mask])
                 epoch_val_loss += loss.item()
 
-        if epoch == 0:
-            images = wandb.Image(input)
+        if epoch == 1:
+            images = wandb.Image(input[:4, :, :], caption="True images")
             wandb.log({"reconstruction": images},
-                      step=epoch, caption="True images")
+                      step=epoch)
 
-        if epoch % 10 == 0:
+        if epoch % 2 == 0:
             output[:4, :, ~mask] = input[:4, :, ~mask]
-            images = wandb.Image(output)
+            images = wandb.Image(output[:4, :, :], caption="Reconstruction")
             wandb.log({"reconstruction": images},
-                      step=epoch, caption="Reconstruction")
+                      step=epoch)
 
         epoch_train_loss /= len(trainloader)
         epoch_val_loss /= len(valloader)
@@ -184,7 +184,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             epoch_train_loss = loss.item()
 
         with torch.no_grad():
-            for input, target in trainloader:
+            for input, target in valloader:
                 input = input.to(device)
                 target = target.to(device)
                 output = model.classify(input)
