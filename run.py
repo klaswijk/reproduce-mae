@@ -26,6 +26,22 @@ def save_checkpoint(path, checkpoint, **updates):
     torch.save(checkpoint, path)
 
 
+def log_reconstruction(epoch, input, output, mask, train):
+    dataset_log = "train" if train else "val"
+    dataset = "training" if train else "validation"
+    if epoch == 1:
+        images = wandb.Image(
+            input[:4, :, :], caption=f"True images ({dataset} data)")
+        wandb.log({f"{dataset_log}_reconstruction": images},
+                  step=epoch)
+    else:
+        output[:4, :, ~mask] = input[:4, :, ~mask]
+        images = wandb.Image(
+            output[:4, :, :], caption=f"Reconstruction ({dataset} data)")
+        wandb.log({f"{dataset_log}_reconstruction": images},
+                  step=epoch)
+
+
 def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ingerval):
     config = checkpoint["config"]
     patch_size = config["model"]["patch_size"]
@@ -69,6 +85,9 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             optimizer.step()
             epoch_train_loss += loss.item()
 
+        if epoch == 1 or epoch % log_image_ingerval == 0:
+            log_reconstruction(epoch, input, output, mask, True)
+
         with torch.no_grad():
             for input, _ in valloader:
                 input = input.to(device)
@@ -78,19 +97,11 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                 loss = criterion(input[:, :, mask], output[:, :, mask])
                 epoch_val_loss += loss.item()
 
-        if epoch == 1:
-            images = wandb.Image(input[:4, :, :], caption="True images")
-            wandb.log({"reconstruction": images},
-                      step=epoch)
+        if epoch == 1 or epoch % log_image_ingerval == 0:
+            log_reconstruction(epoch, input, output, mask, False)
 
-        if epoch % log_image_ingerval == 0:
-            output[:4, :, ~mask] = input[:4, :, ~mask]
-            images = wandb.Image(output[:4, :, :], caption="Reconstruction")
-            wandb.log({"reconstruction": images},
-                      step=epoch)
-
-        epoch_train_loss /= len(trainloader)
-        epoch_val_loss /= len(valloader)
+        epoch_train_loss /= len(trainloader.dataset)
+        epoch_val_loss /= len(valloader.dataset)
         wandb.log({"epoch": epoch,
                    "train_mse": epoch_train_loss,
                    "val_mse": epoch_val_loss,
@@ -196,8 +207,8 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
                 loss = criterion(output, target)
                 epoch_val_loss = loss.item()
 
-        epoch_train_loss /= len(trainloader)
-        epoch_val_loss /= len(valloader)
+        epoch_train_loss /= len(trainloader.dataset)
+        epoch_val_loss /= len(valloader.dataset)
         wandb.log({"epoch": epoch, "train_ce": epoch_train_loss,
                   "val_ce": epoch_val_loss})
 
@@ -228,13 +239,11 @@ def test_classification(checkpoint, device):
     model.eval()
 
     correct = 0
-    total = 0
     with torch.no_grad():
         for input, targets in testloader:
             input = input.to(device)
             target = target.to(device)
             output = model.classify(input)
             correct += torch.sum(output.argmax(dim=1) == targets)
-            total += len(targets)
 
-    print(f"Test accuracy: {correct / total:.3f}")
+    print(f"Test accuracy: {correct / len(testloader.dataset):.3f}")
