@@ -12,10 +12,19 @@ from mae import MAE
 from data import info
 
 
+from transformers import ViTMAEConfig, ViTMAEModel, ViTMAEForPreTraining
+
+
 def initialize(config):
     torch.manual_seed(config["random_seed"])
     image_size, n_classes = info[config["data"]["dataset"]]
-    model = MAE(image_size, n_classes, **config["model"])
+
+    configuration = ViTMAEConfig()
+    configuration.image_size = image_size
+    model = ViTMAEForPreTraining(configuration)
+
+    # model = MAE(image_size, n_classes, **config["model"])
+
     optimizer = Adam(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     return {

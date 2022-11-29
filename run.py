@@ -11,6 +11,8 @@ from mae import MAE
 from data import info, get_dataloader
 from plot import plot_reconstruction
 
+from transformers import ViTMAEConfig, ViTMAEModel, ViTMAEForPreTraining
+
 
 def mask_from_patches(masked_indices, image_size, patch_size):
     seq_length = image_size // patch_size
@@ -41,10 +43,14 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = MSELoss()
 
-    model = MAE(image_size, n_classes, **config["model"]).to(device)
+    # model = MAE(image_size, n_classes, **config["model"]).to(device)
+    configuration = ViTMAEConfig()
+    configuration.image_size = image_size
+    model = ViTMAEForPreTraining(configuration).to(device)
+
     optimizer = Adam(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
-    model.load_state_dict(checkpoint["model_state_dict"])
+    # model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
@@ -60,10 +66,25 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             input = input.to(device)
             optimizer.zero_grad()
 
-            output, masked_indices = model(input)
-            mask = mask_from_patches(
-                masked_indices, image_size, patch_size)
-            loss = criterion(input[:, :, mask], output[:, :, mask])
+            # output, masked_indices = model(input)
+            output = model(input)
+
+            # print(output.keys())
+            # print(output.logits.shape)
+
+            # print(output.last_hidden_state.shape)
+            # print(output.mask.shape)
+            # print(output.ids_restore.shape)
+            # mask = mask_from_patches(
+            #     masked_indices, image_size, patch_size)
+            # loss = criterion(input[:, :, mask], output[:, :, mask])
+
+            # print(input.shape)
+            # print(output.shape)
+
+            # print(loss)
+
+            loss = output.loss
 
             loss.backward()
             optimizer.step()
@@ -72,11 +93,15 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         with torch.no_grad():
             for input, _ in valloader:
                 input = input.to(device)
-                output, masked_indices = model(input)
-                mask = mask_from_patches(
-                    masked_indices, image_size, patch_size)
-                loss = criterion(input[:, :, mask], output[:, :, mask])
+                # output, masked_indices = model(input)
+                output = model(input)
+                # mask = mask_from_patches(
+                #     masked_indices, image_size, patch_size)
+                # loss = criterion(input[:, :, mask], output[:, :, mask])
+                # loss = criterion(input, output)
+                loss = output.loss
                 epoch_val_loss += loss.item()
+                output = output.logits.reshape(-1, 3, 160, 160)
 
         if epoch == 1:
             images = wandb.Image(input[:4, :, :], caption="True images")
@@ -84,7 +109,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                       step=epoch)
 
         if epoch % log_image_ingerval == 0:
-            output[:4, :, ~mask] = input[:4, :, ~mask]
+            # output[:4, :, :] = input[:4, :, :]
             images = wandb.Image(output[:4, :, :], caption="Reconstruction")
             wandb.log({"reconstruction": images},
                       step=epoch)
