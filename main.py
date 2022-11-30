@@ -59,7 +59,7 @@ def main():
         # Continue from checkpoint if specified
         checkpoint = torch.load(args.checkpoint, map_location=device)
         config = checkpoint["config"]
-        torch.set_rng_state(checkpoint["random_state"])
+        torch.set_rng_state(checkpoint["random_state"].to("cpu"))
 
     if args.config:
         # Start fresh based on config
