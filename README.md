@@ -12,7 +12,7 @@ python main.py --pretrain --config configs/imagenette.yaml --epochs 10 --id dev 
 ```
 python main.py --pretrain --config configs/imagenette_test.yaml --epochs 100 --id dev --checkpoint-frequency 1 --log_image_ingerval 1
 
-python main.py --finetune --config configs/imagenette_test_finetune.yaml --checkpoint '/home/morningstar/Documents/github/reproduce-mae/checkpoints/dev_pretrain/current_best.pth' --epochs 100 --id dev_finetune --checkpoint-frequency 1
+python main.py --finetune --config configs/imagenette_test_finetune.yaml --checkpoint '/home/morningstar/Documents/github/reproduce-mae/checkpoints/dev_pretrain/current_best.pth' --epochs 100 --id dev --checkpoint-frequency 1
 
 python main.py --finetune --checkpoint '/home/morningstar/Documents/github/reproduce-mae/checkpoints/dev_pretrain/current_best.pth' --epochs 100 --id dev --checkpoint-frequency 1
 ```
