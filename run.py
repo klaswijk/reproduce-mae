@@ -12,6 +12,8 @@ from mae import MAE
 from data import info, get_dataloader
 from plot import plot_reconstruction
 
+import numpy as np
+
 
 def mask_from_patches(masked_indices, image_size, patch_size):
     seq_length = image_size // patch_size
@@ -71,6 +73,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         trainloader.dataset), "number of validation samples": len(valloader.dataset)})
 
     start = checkpoint["pretrain_epoch"] + 1
+
+    best_val_loss = (0, np.Inf)  # epoch and loss
     for epoch in range(start, start + epochs):
         epoch_train_loss = 0
         epoch_val_loss = 0
@@ -131,6 +135,26 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                 scheduler_state_dict=scheduler.state_dict(),
                 pretrain_epoch=epoch,
             )
+
+        if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
+            # found a better checkpoint
+            save_checkpoint(
+                f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain/current_best.pth",
+                checkpoint,
+                random_state=torch.get_rng_state(),
+                model_state_dict=model.state_dict(),
+                optimizer_state_dict=optimizer.state_dict(),
+                scheduler_state_dict=scheduler.state_dict(),
+                pretrain_epoch=epoch,
+            )
+            best_val_loss = (epoch, epoch_val_loss)
+
+        elif epoch-best_val_loss[0] > config["lookahead"]:
+            print(
+                f"Early stopping at \nEpoch={epoch} loss={epoch_val_loss} in favor of \nEpoch={best_val_loss[0]} loss={best_val_loss[1]}")
+            # stopping based on how far we looked ahead
+            # could load "current best" and save it with "earlystopping_{epoch}"
+            return
 
 
 def test_reconstruction(checkpoint, device):

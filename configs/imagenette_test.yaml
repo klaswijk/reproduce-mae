@@ -1,6 +1,6 @@
 data:
     dataset: "imagenette"
-    limit: -1  # Limit number of examples. -1 = use all data
+    limit: 100  # Limit number of examples. -1 = use all data
     val_ratio: 0.1
 model:  # MAE
     patch_size: 16
@@ -23,4 +23,4 @@ scheduler:
     T_max: 2000
     eta_min: 0.000000001 
 random_seed: 0
-lookahead: 50
+lookahead: 1
