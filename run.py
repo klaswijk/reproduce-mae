@@ -100,8 +100,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         if epoch == 1 or epoch % log_image_ingerval == 0:
             log_reconstruction(epoch, input, output, mask, False)
 
-        epoch_train_loss /= len(trainloader.dataset)
-        epoch_val_loss /= len(valloader.dataset)
+        epoch_train_loss /= len(trainloader)
+        epoch_val_loss /= len(valloader)
         wandb.log({"epoch": epoch,
                    "train_mse": epoch_train_loss,
                    "val_mse": epoch_val_loss,
