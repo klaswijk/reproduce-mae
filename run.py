@@ -6,6 +6,7 @@ import wandb
 from torch.nn import MSELoss, CrossEntropyLoss, UpsamplingNearest2d
 from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data import Subset, DataLoader
 
 from mae import MAE
 from data import info, get_dataloader
@@ -55,6 +56,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
+    train_reconstruction_loader = DataLoader(
+        Subset(trainloader.dataset, range(4)), batch_size=4)
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -86,6 +89,14 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             epoch_train_loss += loss.item()
 
         if epoch == 1 or epoch % log_image_ingerval == 0:
+            with torch.no_grad():
+                for input, _ in train_reconstruction_loader:
+                    input = input.to(device)
+                    output, masked_indices = model(input)
+                    mask = mask_from_patches(
+                        masked_indices, image_size, patch_size)
+                    loss = criterion(input[:, :, mask], output[:, :, mask])
+                    epoch_val_loss += loss.item()
             log_reconstruction(epoch, input, output, mask, True)
 
         with torch.no_grad():
