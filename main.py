@@ -42,7 +42,7 @@ def overwrite(checkpoint, config):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    settings = parser.add_mutually_exclusive_group()
+    settings = parser.add_argument_group()
     settings.add_argument("--config")
     settings.add_argument("--checkpoint")
     task = parser.add_mutually_exclusive_group()
