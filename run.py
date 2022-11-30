@@ -50,12 +50,13 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
-    name = f"{id}_pretrain_{datetime.datetime.now()}"
+    name = f"{id}_pretrain"
 
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=name, entity="mae_dd2412")
+    wandb.init(config=config, name=name + "_" +
+               str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     train_reconstruction_loader = DataLoader(
@@ -198,12 +199,12 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
-    name = id + "_finetune_" + str(datetime.datetime.now())
+    name = id + "_finetune"
 
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=name)
+    wandb.init(config=config, name=name+"_"+str(datetime.datetime.now()))
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = CrossEntropyLoss()
