@@ -14,7 +14,7 @@ from data import info
 
 def initialize(config):
     torch.manual_seed(config["random_seed"])
-    image_size, n_classes = info[config["data"]["dataset"]]
+    image_size, n_classes, _ = info[config["data"]["dataset"]]
     model = MAE(image_size, n_classes, **config["model"])
     optimizer = Adam(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
@@ -31,7 +31,7 @@ def initialize(config):
 
 def overwrite(checkpoint, config):
     """Overwrite the optimizer and sheduler"""
-    image_size, n_classes = info[config["data"]["dataset"]]
+    image_size, n_classes, _ = info[config["data"]["dataset"]]
     model = MAE(image_size, n_classes, **config["model"])
     optimizer = Adam(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
