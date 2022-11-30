@@ -9,6 +9,12 @@ sbatch --export epochs=2000,checkpoint_frequency=100,log_image_ingerval=100,data
 sbatch --export epochs=2000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette.yaml /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
 
 
+###########
+# run full
+###########
+sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
+
+###########
 
 dataset path: /local_storage/datasets
 output path: /local_storage/users/rickym/models
