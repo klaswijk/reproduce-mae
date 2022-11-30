@@ -50,12 +50,12 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
+    name = f"{id}_pretrain_{datetime.datetime.now()}"
 
     os.makedirs(
-        f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain", exist_ok=True)
+        f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=id + "_pretrain_" +
-               str(datetime.datetime.now()), entity="mae_dd2412")
+    wandb.init(config=config, name=name, entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     train_reconstruction_loader = DataLoader(
@@ -127,7 +127,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
         if epoch % checkpoint_frequency == 0:
             save_checkpoint(
-                f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain/epoch_{epoch}.pth",
+                f"{checkpoint['output_path']}/checkpoints/{name}/epoch_{epoch}.pth",
                 checkpoint,
                 random_state=torch.get_rng_state(),
                 model_state_dict=model.state_dict(),
@@ -139,7 +139,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
             # found a better checkpoint
             save_checkpoint(
-                f"{checkpoint['output_path']}/checkpoints/{dataset}/pretrain/current_best.pth",
+                f"{checkpoint['output_path']}/checkpoints/{name}/current_best.pth",
                 checkpoint,
                 random_state=torch.get_rng_state(),
                 model_state_dict=model.state_dict(),
@@ -198,12 +198,12 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes = info[dataset]
+    name = id + "_finetune_" + str(datetime.datetime.now())
 
     os.makedirs(
-        f"{checkpoint['output_path']}/checkpoints/{dataset}/finetune", exist_ok=True)
+        f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=id + "_finetune_" +
-               str(datetime.datetime.now()))
+    wandb.init(config=config, name=name)
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
     criterion = CrossEntropyLoss()
@@ -217,6 +217,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
     start = checkpoint["finetune_epoch"] + 1
+    best_val_loss = (0, np.Inf)  # epoch and loss
     for epoch in range(start, start + epochs):
         epoch_train_loss = 0
         epoch_val_loss = 0
@@ -251,7 +252,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
 
         if epoch % checkpoint_frequency == 0:
             save_checkpoint(
-                f"{checkpoint['output_path']}/checkpoints/{dataset}/finetune/epoch_{epoch}.pth",
+                f"{checkpoint['output_path']}/checkpoints/{name}/epoch_{epoch}.pth",
                 checkpoint,
                 random_state=torch.get_rng_state(),
                 model_state_dict=model.state_dict(),
@@ -259,6 +260,26 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
                 scheduler_state_dict=scheduler.state_dict(),
                 finetune_epoch=epoch,
             )
+
+        if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
+            # found a better checkpoint
+            save_checkpoint(
+                f"{checkpoint['output_path']}/checkpoints/{name}/current_best.pth",
+                checkpoint,
+                random_state=torch.get_rng_state(),
+                model_state_dict=model.state_dict(),
+                optimizer_state_dict=optimizer.state_dict(),
+                scheduler_state_dict=scheduler.state_dict(),
+                finetune_epoch=epoch,
+            )
+            best_val_loss = (epoch, epoch_val_loss)
+
+        elif epoch-best_val_loss[0] > config["lookahead"]:
+            print(
+                f"Early stopping at \nEpoch={epoch} loss={epoch_val_loss} in favor of \nEpoch={best_val_loss[0]} loss={best_val_loss[1]}")
+            # stopping based on how far we looked ahead
+            # could load "current best" and save it with "earlystopping_{epoch}"
+            return
 
 
 def test_classification(checkpoint, device):

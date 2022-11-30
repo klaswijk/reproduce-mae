@@ -5,6 +5,9 @@ sbatch --export epochs=100,checkpoint_frequency=10,log_image_ingerval=2,data_pat
 # 345993
 sbatch --export epochs=2000,checkpoint_frequency=100,log_image_ingerval=100,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette.yaml /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
 
+# 346299
+sbatch --export epochs=2000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette.yaml /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
+
 
 
 dataset path: /local_storage/datasets

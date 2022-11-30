@@ -60,13 +60,17 @@ def main():
         checkpoint = torch.load(args.checkpoint, map_location=device)
         config = checkpoint["config"]
         torch.set_rng_state(checkpoint["random_state"])
-    elif args.config:
+
+    if args.config:
         # Start fresh based on config
         with open(args.config, "r") as f:
             config = yaml.safe_load(f)
-        checkpoint = initialize(config)
-        checkpoint["data_path"] = args.data_path
-        checkpoint["output_path"] = args.output_path
+        if not args.checkpoint:
+            checkpoint = initialize(config)
+            checkpoint["data_path"] = args.data_path
+            checkpoint["output_path"] = args.output_path
+        else:
+            checkpoint["config"] = config
 
     # Run the specified task
     if args.pretrain:
