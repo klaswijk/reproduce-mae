@@ -2,6 +2,7 @@ import os
 from collections import namedtuple
 from pandas import read_csv
 from torch.utils.data import DataLoader, Subset, Dataset
+from pycocotools.coco import COCO
 from torchvision import datasets, transforms
 from PIL import Image
 import numpy as np
@@ -40,6 +41,127 @@ class ImageNetteDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
+
+
+class CocoMulticlassDataset(Dataset):
+    """
+    Creates a COCOMultiClassDataset with labels on the form [category1, category2...]
+    (not one hot)
+    """
+
+    def __init__(self, path, transform=None, target_transform=None, test=False):
+
+        # initialize COCO api for instance annotations
+        self.dataDir = f'{path}/coco'
+
+        if test:
+            self.dataType = 'val2014'
+        else:
+            self.dataType = 'train2014'
+
+        annFile = '{}/annotations/instances_{}.json'.format(self.dataDir, self.dataType)
+        self.img_dir = f"{self.dataDir}/images/{self.dataType}"
+
+        # initialize COCO api for instance annotations
+        coco = COCO(annFile)
+
+        cats = [cat['id'] for cat in coco.loadCats(coco.getCatIds())]
+        cat_to_idx = dict(zip(cats, range(len(cats))))
+
+        img_ids = coco.getImgIds()
+        self.imgs = coco.loadImgs(img_ids)
+
+        # lista av ans för varje bild
+        anns_ids = [coco.getAnnIds(imgIds=imgid) for imgid in img_ids]
+
+        self.labels = []
+
+        for ids in anns_ids:
+            self.labels.append(
+                np.unique([cat_to_idx.get(ann['category_id']) for ann in coco.loadAnns(ids)])
+            )
+
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.imgs)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, self.imgs[idx]['file_name'])
+        image = Image.open(img_path)
+        image = image.convert('RGB')
+
+        label = self.labels[idx]
+
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return image, label
+
+
+def coco(train, device, checkpoint):
+    """Returns (dataloader, image_size)"""
+    data_path = checkpoint["data_path"]
+    limit = checkpoint["config"]["data"]["limit"]
+    val_ratio = checkpoint["config"]["data"]["val_ratio"]
+    batch_size = checkpoint["config"]["batch_size"]
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.RandomCrop((160, 160)),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    if train:
+        dataset = CocoMulticlassDataset(
+            data_path,
+            transform=transform,
+        )
+
+        idx = np.array(list(range(len(dataset))))
+        np.random.shuffle(idx)
+
+        if limit and limit > -1:
+            dataset = Subset(dataset, idx[:limit])
+            idx = np.array(list(range(len(dataset))))
+            np.random.shuffle(idx)
+
+        valsize = int(val_ratio * len(dataset))
+        valset = Subset(dataset, idx[-valsize:])
+        trainset = Subset(dataset, idx[:-valsize])
+        trainloader = DataLoader(
+            trainset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        valloader = DataLoader(
+            valset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        return trainloader, valloader
+    else:
+        dataset = CocoMulticlassDataset(
+            data_path,
+            transform=transform,
+        )
+        testloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=4,
+            pin_memory=str(device) != "cpu",
+            pin_memory_device=str(device) if str(device) != "cpu" else ""
+        )
+        return testloader
 
 
 def imagenette(train, device, checkpoint):
