@@ -29,6 +29,17 @@ def initialize(config):
     }
 
 
+def overwrite(checkpoint, config):
+    """Overwrite the optimizer and sheduler"""
+    image_size, n_classes = info[config["data"]["dataset"]]
+    model = MAE(image_size, n_classes, **config["model"])
+    optimizer = Adam(model.parameters(), **config["optimizer"])
+    scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
+    checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+    checkpoint["scheduler_state_dict"] = scheduler.state_dict()
+    return checkpoint
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
     settings = parser.add_mutually_exclusive_group()
@@ -71,6 +82,7 @@ def main():
             checkpoint["output_path"] = args.output_path
         else:
             checkpoint["config"] = config
+            checkpoint = overwrite(checkpoint, config)
 
     # Run the specified task
     if args.pretrain:
