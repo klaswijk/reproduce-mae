@@ -111,6 +111,7 @@ def main():
         run.test_classification(
             checkpoint,
             device,
+            args.id,
         )
 
 

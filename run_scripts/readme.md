@@ -12,7 +12,11 @@ sbatch --export epochs=2000,checkpoint_frequency=500,log_image_ingerval=50,data_
 ###########
 # run full
 ###########
-sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
+# tiny 346311
+sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=100,log_image_ingerval=2,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette_tiny /Midgard/home/rickym/reproduce-mae/run_scripts/run_full_imagenette.sbatch
+
+# real 
+sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette /Midgard/home/rickym/reproduce-mae/run_scripts/run_full_imagenette.sbatch
 
 ###########
 
