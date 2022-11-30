@@ -211,7 +211,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
         activate = torch.nn.Sigmoid()
         criterion = BCELoss()
     else:
-        activate = torch.nn.LogSoftmax()
+        activate = torch.nn.LogSoftmax(dim=1)
         criterion = NLLLoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -288,7 +288,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             return
 
 
-def test_classification(checkpoint, device):
+def test_classification(checkpoint, device, id):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
@@ -308,7 +308,7 @@ def test_classification(checkpoint, device):
         criterion = BCELoss()
         number_correct = NotImplemented
     else:
-        activate = torch.nn.LogSoftmax()
+        activate = torch.nn.LogSoftmax(dim=1)
         criterion = NLLLoss()
         def number_correct(p, t): return torch.sum(p.argmax(dim=1) == t)
 
@@ -326,5 +326,5 @@ def test_classification(checkpoint, device):
     test_loss = total_loss / len(testloader)
     test_acc = correct / len(testloader.dataset)
 
-    wandb.log({"test_loss": test_loss, "val_loss": test_acc})
+    wandb.log({"test_loss": test_loss, "test_acc": test_acc})
     print(f"Test loss: {test_loss} Test accuracy: {test_acc}")
