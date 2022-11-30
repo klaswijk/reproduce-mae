@@ -6,10 +6,12 @@ from torchvision import datasets, transforms
 from PIL import Image
 import numpy as np
 
-DatasetInfo = namedtuple("DatasetInfo", ["image_size", "n_classes"])
+DatasetInfo = namedtuple(
+    "DatasetInfo", ["image_size", "n_classes", "multilabel"])
 info = {
-    "cifar10": DatasetInfo(image_size=32, n_classes=10),
-    "imagenette": DatasetInfo(image_size=160, n_classes=10)
+    "cifar10": DatasetInfo(image_size=32, n_classes=10, multilabel=False),
+    "imagenette": DatasetInfo(image_size=160, n_classes=10, multilabel=False),
+    "coco": DatasetInfo(image_size=124, n_classes=80, multilabel=True)
 }
 
 

@@ -3,7 +3,7 @@ import datetime
 import torch
 import wandb
 
-from torch.nn import MSELoss, CrossEntropyLoss, UpsamplingNearest2d
+from torch.nn import MSELoss, NLLLoss, BCELoss, UpsamplingNearest2d
 from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
@@ -49,7 +49,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     config = checkpoint["config"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
-    image_size, n_classes = info[dataset]
+    image_size, n_classes, _ = info[dataset]
     name = f"{id}_pretrain"
 
     os.makedirs(
@@ -163,7 +163,7 @@ def test_reconstruction(checkpoint, device):
     batch_size = config["batch_size"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
-    image_size, n_classes = info[dataset]
+    image_size, n_classes, _ = info[dataset]
 
     os.makedirs(
         f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/", exist_ok=True)
@@ -198,7 +198,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
-    image_size, n_classes = info[dataset]
+    image_size, n_classes, multilabel = info[dataset]
     name = id + "_finetune"
 
     os.makedirs(
@@ -207,7 +207,12 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     wandb.init(config=config, name=name+"_"+str(datetime.datetime.now()))
 
     trainloader, valloader = get_dataloader(dataset, True, device, checkpoint)
-    criterion = CrossEntropyLoss()
+    if multilabel:
+        activate = torch.nn.Sigmoid()
+        criterion = BCELoss()
+    else:
+        activate = torch.nn.LogSoftmax()
+        criterion = NLLLoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     optimizer = Adam(model.parameters(), **config["optimizer"])
@@ -229,7 +234,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             optimizer.zero_grad()
 
             output = model.classify(input)
-            loss = criterion(output, target)
+            loss = criterion(activate(output), target)
 
             loss.backward()
             optimizer.step()
@@ -241,13 +246,13 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
                 input = input.to(device)
                 target = target.to(device)
                 output = model.classify(input)
-                loss = criterion(output, target)
+                loss = criterion(activate(output), target)
                 epoch_val_loss = loss.item()
 
         epoch_train_loss /= len(trainloader.dataset)
         epoch_val_loss /= len(valloader.dataset)
-        wandb.log({"epoch": epoch, "train_ce": epoch_train_loss,
-                  "val_ce": epoch_val_loss})
+        wandb.log({"epoch": epoch, "train_loss": epoch_train_loss,
+                  "val_loss": epoch_val_loss})
 
         scheduler.step()
 
@@ -287,7 +292,10 @@ def test_classification(checkpoint, device):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
-    image_size, n_classes = info[dataset]
+    image_size, n_classes, multilabel = info[dataset]
+    name = id + "_test_classification"
+
+    wandb.init(config=config, name=name+"_"+str(datetime.datetime.now()))
 
     testloader = get_dataloader(dataset, False, device, checkpoint)
 
@@ -295,12 +303,28 @@ def test_classification(checkpoint, device):
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
+    if multilabel:
+        activate = torch.nn.Sigmoid()
+        criterion = BCELoss()
+        number_correct = NotImplemented
+    else:
+        activate = torch.nn.LogSoftmax()
+        criterion = NLLLoss()
+        def number_correct(p, t): return torch.sum(p.argmax(dim=1) == t)
+
     correct = 0
+    total_loss = 0
     with torch.no_grad():
-        for input, targets in testloader:
+        for input, target in testloader:
             input = input.to(device)
             target = target.to(device)
             output = model.classify(input)
-            correct += torch.sum(output.argmax(dim=1) == targets)
+            loss = criterion(activate(output), target)
+            total_loss += loss.item()
+            correct += number_correct(output, target)
 
-    print(f"Test accuracy: {correct / len(testloader.dataset):.3f}")
+    test_loss = total_loss / len(testloader)
+    test_acc = correct / len(testloader.dataset)
+
+    wandb.log({"test_loss": test_loss, "val_loss": test_acc})
+    print(f"Test loss: {test_loss} Test accuracy: {test_acc}")
