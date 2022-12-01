@@ -55,8 +55,10 @@ class CocoMulticlassDataset(Dataset):
         self.dataDir = f'{path}/coco'
 
         if test:
+            # Here is the dataset used for testing
             self.dataType = 'val2014'
         else:
+            # Here is the dataset used for training
             self.dataType = 'train2014'
 
         annFile = '{}/annotations/instances_{}.json'.format(self.dataDir, self.dataType)
