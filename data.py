@@ -1,8 +1,8 @@
 import os
+import json
 from collections import namedtuple
 from pandas import read_csv
 from torch.utils.data import DataLoader, Subset, Dataset
-from pycocotools.coco import COCO
 from torchvision import datasets, transforms
 from PIL import Image
 import numpy as np
@@ -12,7 +12,7 @@ DatasetInfo = namedtuple(
 info = {
     "cifar10": DatasetInfo(image_size=32, n_classes=10, multilabel=False),
     "imagenette": DatasetInfo(image_size=160, n_classes=10, multilabel=False),
-    "coco": DatasetInfo(image_size=124, n_classes=80, multilabel=True)
+    "coco": DatasetInfo(image_size=64, n_classes=80, multilabel=True)
 }
 
 
@@ -43,60 +43,37 @@ class ImageNetteDataset(Dataset):
         return image, label
 
 
-class CocoMulticlassDataset(Dataset):
-    """
-    Creates a COCOMultiClassDataset with labels on the form [category1, category2...]
-    (not one hot)
-    """
+class CocoMultilabel(Dataset):
 
-    def __init__(self, path, transform=None, target_transform=None, test=False):
-
-        # initialize COCO api for instance annotations
-        self.dataDir = f'{path}/coco'
-
-        if test:
-            # Here is the dataset used for testing
-            self.dataType = 'val2014'
-        else:
-            # Here is the dataset used for training
-            self.dataType = 'train2014'
-
-        annFile = '{}/annotations/instances_{}.json'.format(self.dataDir, self.dataType)
-        self.img_dir = f"{self.dataDir}/images/{self.dataType}"
-
-        # initialize COCO api for instance annotations
-        coco = COCO(annFile)
-
-        cats = [cat['id'] for cat in coco.loadCats(coco.getCatIds())]
-        cat_to_idx = dict(zip(cats, range(len(cats))))
-
-        img_ids = coco.getImgIds()
-        self.imgs = coco.loadImgs(img_ids)
-
-        # lista av ans för varje bild
-        anns_ids = [coco.getAnnIds(imgIds=imgid) for imgid in img_ids]
-
-        self.labels = np.zeros((len(self.imgs), info['coco'].n_classes), dtype=np.int8)
-
-        # Make one-hot encoded labels
-        for i, ids in enumerate(anns_ids):
-            for category_idx in map(lambda x: cat_to_idx.get(x['category_id']),
-                                    coco.loadAnns(ids)):
-                self.labels[i, category_idx] = 1
+    def __init__(self, path, transform=None, target_transform=None, test=False, version="2017"):
+        datatype = "val" if test else "train"
+        with open(f"{path}/coco/annotations/instances_{datatype}{version}.json", "r") as f:
+            instances = json.load(f)
 
         self.transform = transform
         self.target_transform = target_transform
+        self.datapath = f"{path}/coco/{datatype}{version}"
+        self.images = [image["file_name"] for image in instances["images"]]
+        self.image_ids = [image["id"] for image in instances["images"]]
+        self.label_names = [cat["name"] for cat in instances["categories"]]
+        self.labels = {id: np.zeros(80) for id in self.image_ids}
+
+        # https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
+        ignore = [12, 26, 29, 30, 45, 66, 68, 69, 71, 83, 91]
+
+        for annotation in instances["annotations"]:
+            cat_id = annotation["category_id"]
+            cat_id -= np.searchsorted(ignore, cat_id)
+            image_id = annotation["image_id"]
+            self.labels[image_id][cat_id - 1] = 1
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.image_ids)
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.img_dir, self.imgs[idx]['file_name'])
-        image = Image.open(img_path)
+        image = Image.open(f"{self.datapath}/{self.images[idx]}")
         image = image.convert('RGB')
-
-        label = self.labels[idx, :]
-
+        label = self.labels[self.image_ids[idx]]
         if self.transform:
             image = self.transform(image)
         if self.target_transform:
@@ -112,14 +89,14 @@ def coco(train, device, checkpoint):
     batch_size = checkpoint["config"]["batch_size"]
 
     transform = transforms.Compose([
+        transforms.Resize(80, antialias=True),
         transforms.ToTensor(),
-        transforms.Resize(info['coco'].image_size),
-        transforms.RandomCrop((info['coco'].image_size, info['coco'].image_size)),
+        transforms.RandomCrop(64),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     if train:
-        dataset = CocoMulticlassDataset(
+        dataset = CocoMultilabel(
             data_path,
             transform=transform,
         )
@@ -153,7 +130,7 @@ def coco(train, device, checkpoint):
         )
         return trainloader, valloader
     else:
-        dataset = CocoMulticlassDataset(
+        dataset = CocoMultilabel(
             data_path,
             transform=transform,
             test=True
