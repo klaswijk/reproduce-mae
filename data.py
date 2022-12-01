@@ -74,12 +74,13 @@ class CocoMulticlassDataset(Dataset):
         # lista av ans för varje bild
         anns_ids = [coco.getAnnIds(imgIds=imgid) for imgid in img_ids]
 
-        self.labels = []
+        self.labels = np.zeros((len(self.imgs), info['coco'].n_classes), dtype=np.int8)
 
-        for ids in anns_ids:
-            self.labels.append(
-                np.unique([cat_to_idx.get(ann['category_id']) for ann in coco.loadAnns(ids)])
-            )
+        # Make one-hot encoded labels
+        for i, ids in enumerate(anns_ids):
+            for category_idx in map(lambda x: cat_to_idx.get(x['category_id']),
+                                    coco.loadAnns(ids)):
+                self.labels[i, category_idx] = 1
 
         self.transform = transform
         self.target_transform = target_transform
@@ -92,7 +93,7 @@ class CocoMulticlassDataset(Dataset):
         image = Image.open(img_path)
         image = image.convert('RGB')
 
-        label = self.labels[idx]
+        label = self.labels[idx, :]
 
         if self.transform:
             image = self.transform(image)
@@ -110,7 +111,8 @@ def coco(train, device, checkpoint):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.RandomCrop((160, 160)),
+        transforms.Resize(info['coco'].image_size),
+        transforms.RandomCrop((info['coco'].image_size, info['coco'].image_size)),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
@@ -124,13 +126,13 @@ def coco(train, device, checkpoint):
         np.random.shuffle(idx)
 
         if limit and limit > -1:
-            dataset = Subset(dataset, idx[:limit])
+            dataset = Subset(dataset, idx[: limit])
             idx = np.array(list(range(len(dataset))))
             np.random.shuffle(idx)
 
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
-        trainset = Subset(dataset, idx[:-valsize])
+        trainset = Subset(dataset, idx[: -valsize])
         trainloader = DataLoader(
             trainset,
             batch_size=batch_size,
@@ -152,6 +154,7 @@ def coco(train, device, checkpoint):
         dataset = CocoMulticlassDataset(
             data_path,
             transform=transform,
+            test=True
         )
         testloader = DataLoader(
             dataset,
@@ -203,13 +206,13 @@ def imagenette(train, device, checkpoint):
         np.random.shuffle(idx)
 
         if limit and limit > -1:
-            dataset = Subset(dataset, idx[:limit])
+            dataset = Subset(dataset, idx[: limit])
             idx = np.array(list(range(len(dataset))))
             np.random.shuffle(idx)
 
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
-        trainset = Subset(dataset, idx[:-valsize])
+        trainset = Subset(dataset, idx[: -valsize])
         trainloader = DataLoader(
             trainset,
             batch_size=batch_size,
@@ -271,7 +274,7 @@ def cifar(train, device, checkpoint):
 
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
-        trainset = Subset(dataset, idx[:-valsize])
+        trainset = Subset(dataset, idx[: -valsize])
         trainloader = DataLoader(
             trainset,
             batch_size=batch_size,
@@ -306,5 +309,7 @@ def get_dataloader(dataset, train, device, checkpoint):
         return cifar(train, device, checkpoint)
     elif dataset == "imagenette":
         return imagenette(train, device, checkpoint)
+    elif dataset == "coco":
+        return coco(train, device, checkpoint)
     else:
         raise ValueError(f"Unknown dataset '{dataset}'")
