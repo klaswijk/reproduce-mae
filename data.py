@@ -2,6 +2,7 @@ import os
 import json
 from collections import namedtuple
 from pandas import read_csv
+import torch
 from torch.utils.data import DataLoader, Subset, Dataset
 from torchvision import datasets, transforms
 from PIL import Image
@@ -56,7 +57,8 @@ class CocoMultilabel(Dataset):
         self.images = [image["file_name"] for image in instances["images"]]
         self.image_ids = [image["id"] for image in instances["images"]]
         self.label_names = [cat["name"] for cat in instances["categories"]]
-        self.labels = {id: np.zeros(80) for id in self.image_ids}
+        self.labels = {id: np.zeros(80, dtype=np.float32)
+                       for id in self.image_ids}
 
         # https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
         ignore = [12, 26, 29, 30, 45, 66, 68, 69, 71, 83, 91]
@@ -78,6 +80,7 @@ class CocoMultilabel(Dataset):
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
+
         return image, label
 
 
@@ -105,6 +108,7 @@ def coco(train, device, checkpoint, transform):
         valsize = int(val_ratio * len(dataset))
         valset = Subset(dataset, idx[-valsize:])
         trainset = Subset(dataset, idx[: -valsize])
+
         trainloader = DataLoader(
             trainset,
             batch_size=batch_size,
@@ -300,20 +304,20 @@ def get_dataloader(dataset, train, device, checkpoint, transform_type=None):
             transform = transforms.Compose([
                 transforms.RandomResizedCrop(64, ratio=(1, 1)),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ])
         else:
             transform = transforms.Compose([
                 transforms.RandomCrop(info[dataset].image_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ])
     else:
         transform = transforms.Compose([
             transforms.Resize(info[dataset].image_size, antialias=True),
             transforms.RandomCrop(info[dataset].image_size),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
     if dataset == "cifar10":
         return cifar(train, device, checkpoint)
