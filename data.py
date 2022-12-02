@@ -277,6 +277,7 @@ def cifar(train, device, checkpoint):
 
 
 def get_dataloader(dataset, train, device, checkpoint, transform_type=None):
+    transform_type = None if not train
     if transform_type == "finetune":
         if dataset == "coco":
             transform = transforms.Compose([
