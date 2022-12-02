@@ -138,16 +138,17 @@ class MAE(nn.Module):
         w = self.encoder_proj.weight.data
         torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
 
-    def patch(self, x: torch.Tensor) -> torch.Tensor:
+    def embed(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder_proj(x)
         x = x.reshape(x.shape[0], self.encoder_hidden_dim,
                       (self.image_size // self.patch_size)**2)
         x = x.permute(0, 2, 1)
         return x
 
+    def patch(self, x: torch.Tensor) -> torch.Tensor:
+        return F.unfold(x, (self.patch_size, self.patch_size), stride=self.patch_size)
+
     def unpatch(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.decoder_proj(x)
-        x = x.permute(0, 2, 1)
         x = F.fold(x, (self.image_size, self.image_size), (self.patch_size,
                    self.patch_size), stride=self.patch_size)
         return x
@@ -163,12 +164,12 @@ class MAE(nn.Module):
     def unmask(self, x: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
         unshuf = torch.zeros_like(perm)
         unshuf[perm] = torch.arange(self.seq_length + 1)
-        out = x[:, unshuf]
-        out[:, perm[1:self.mask_length + 1]] = 0
+        x = x[:, unshuf]
+        x[:, perm[1:self.mask_length + 1]] = 0
         return x
 
     def encoder_forward(self, x: torch.Tensor, mask: bool) -> tuple:
-        x = self.patch(x)
+        x = self.embed(x)
         x = torch.cat([self.class_token.expand(x.shape[0], -1, -1), x], dim=1)
         x = self.encoder_pos_encoding(x)
         if mask:
@@ -187,7 +188,8 @@ class MAE(nn.Module):
         x = self.decoder_pos_encoding(x)
         x = self.decoder(x)
         x = self.decoder_norm(x)
-        x = self.unpatch(x)
+        x = self.decoder_proj(x)
+        x = x.permute(0, 2, 1)
         return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -85,10 +85,11 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             input = input.to(device)
             optimizer.zero_grad()
 
-            output, masked_indices = model(input)
-            mask = mask_from_patches(
-                masked_indices, image_size, patch_size)
-            loss = criterion(input[:, :, mask], output[:, :, mask])
+            input_patches = model.patch(input)
+            output_patches, masked_indices = model(input)
+
+            loss = criterion(
+                input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
 
             loss.backward()
             optimizer.step()
@@ -98,7 +99,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             with torch.no_grad():
                 for input, _ in train_reconstruction_loader:
                     input = input.to(device)
-                    output, masked_indices = model(input)
+                    output_patches, masked_indices = model(input)
+                    output = model.unpatch(output_patches)
                     mask = mask_from_patches(
                         masked_indices, image_size, patch_size)
             log_reconstruction(epoch, input, output, mask, True)
@@ -106,13 +108,19 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
         with torch.no_grad():
             for input, _ in valloader:
                 input = input.to(device)
-                output, masked_indices = model(input)
-                mask = mask_from_patches(
-                    masked_indices, image_size, patch_size)
-                loss = criterion(input[:, :, mask], output[:, :, mask])
+
+                input_patches = model.patch(input)
+                output_patches, masked_indices = model(input)
+
+                loss = criterion(
+                    input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
+
                 epoch_val_loss += loss.item()
 
         if epoch == 1 or epoch % log_image_ingerval == 0:
+            mask = mask_from_patches(
+                masked_indices, image_size, patch_size)
+            output = model.unpatch(output_patches)
             log_reconstruction(epoch, input, output, mask, False)
 
         epoch_train_loss /= len(trainloader)
