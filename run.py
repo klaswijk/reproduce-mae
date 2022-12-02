@@ -235,6 +235,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             optimizer.zero_grad()
 
             output = model.classify(input)
+
             loss = criterion(activate(output), target)
 
             loss.backward()
@@ -308,13 +309,33 @@ def test_classification(checkpoint, device, id):
     if multilabel:
         activate = torch.nn.Sigmoid()
         criterion = BCELoss()
-        number_correct = NotImplemented
+
+        def number_correct(p, t, type_of_correct="tp"):
+
+            t = t.type(torch.bool)
+
+            correct = (p >= 0.5) == t
+            not_correct = ~correct
+            if type_of_correct == "tp":
+                out = correct*t  # is correct then mask for true
+            elif type_of_correct == "tn":
+                out = correct*(~t)  # is correct then mask for false
+            elif type_of_correct == "fp":
+                out = not_correct*t  # is not correct then mask for true
+            elif type_of_correct == "fn":
+                out = not_correct*(~t)  # is not correct then mask for false
+            return torch.sum(out)
+
     else:
         activate = torch.nn.Identity()
         criterion = CrossEntropyLoss()
         def number_correct(p, t): return torch.sum(p.argmax(dim=1) == t)
 
-    correct = 0
+    tp = 0
+    tn = 0
+    fp = 0
+    fn = 0
+    amount_active = 0
     total_loss = 0
     with torch.no_grad():
         for input, target in testloader:
@@ -323,10 +344,24 @@ def test_classification(checkpoint, device, id):
             output = model.classify(input)
             loss = criterion(activate(output), target)
             total_loss += loss.item()
-            correct += number_correct(output, target)
+            tp += number_correct(output, target)
+            if multilabel:
+                tn += number_correct(output, target, "tn")
+                fp += number_correct(output, target, "fp")
+                fn += number_correct(output, target, "fn")
+            amount_active += torch.sum(target)
 
-    test_loss = total_loss / len(testloader)
-    test_acc = correct / len(testloader.dataset)
+    if multilabel:
+        test_loss = total_loss / len(testloader)
+        res = {"test_loss": test_loss, "true positive": tp,
+               "true negative": tn, "false positive": fp, "false negative": fn}
 
-    wandb.log({"test_loss": test_loss, "test_acc": test_acc})
-    print(f"Test loss: {test_loss} Test accuracy: {test_acc}")
+        wandb.log(res)
+        print(res)
+
+    else:
+        test_loss = total_loss / len(testloader)
+        test_acc = tp / (len(testloader.dataset))
+
+        wandb.log({"test_loss": test_loss, "test_acc": test_acc})
+        print(f"Test loss: {test_loss} Test accuracy: {test_acc}")
