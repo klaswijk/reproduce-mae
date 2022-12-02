@@ -3,7 +3,7 @@ import datetime
 import torch
 import wandb
 
-from torch.nn import MSELoss, NLLLoss, BCELoss, UpsamplingNearest2d
+from torch.nn import MSELoss, CrossEntropyLoss, BCELoss, UpsamplingNearest2d
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
@@ -214,8 +214,8 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
         activate = torch.nn.Sigmoid()
         criterion = BCELoss()
     else:
-        activate = torch.nn.LogSoftmax(dim=1)
-        criterion = NLLLoss()
+        activate = torch.nn.Identity()
+        criterion = CrossEntropyLoss(label_smoothing=0.1)
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     optimizer = AdamW(model.parameters(), **config["optimizer"])
