@@ -5,14 +5,14 @@ data:
 model:  # MAE
     patch_size: 16
     mask_ratio: 0.7
-    encoder_layers: 12
-    encoder_num_heads: 12
-    encoder_hidden_dim: 768
-    encoder_mlp_dim: 3072
-    decoder_layers: 8
-    decoder_num_heads: 8
-    decoder_hidden_dim: 256
-    decoder_mlp_dim: 1024
+    encoder_layers: 6
+    encoder_num_heads: 6
+    encoder_hidden_dim: 384
+    encoder_mlp_dim: 1536
+    decoder_layers: 3
+    decoder_num_heads: 3
+    decoder_hidden_dim: 192
+    decoder_mlp_dim: 768
 batch_size: 32
 optimizer:  # Adam
     lr: 0.01
