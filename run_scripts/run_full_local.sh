@@ -31,3 +31,4 @@ echo "Finished"
 # example 
 # id, config, pre epoch, fine epoch, checkpoint freq, log image freq 
 # bash ./run_scripts/run_full_local.sh dev imagenette_testing 100 100 10 2
+# bash ./run_scripts/run_full_local.sh dev coco_testing 100 100 10 2

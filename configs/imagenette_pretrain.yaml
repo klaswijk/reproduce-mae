@@ -4,7 +4,7 @@ data:
     val_ratio: 0.1
 model:  # MAE
     patch_size: 16
-    mask_ratio: 0.9
+    mask_ratio: 0.7
     encoder_layers: 6
     encoder_num_heads: 6
     encoder_hidden_dim: 384
@@ -24,4 +24,4 @@ scheduler:
     T_max: 3000
     eta_min: 0.000000001 
 random_seed: 0
-lookahead: 50
+lookahead: 150

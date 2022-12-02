@@ -24,4 +24,4 @@ scheduler:
     T_max: 2000
     eta_min: 0.000000001 
 random_seed: 0
-lookahead: 50
+lookahead: 150

@@ -1,25 +1,22 @@
 
-# 345961
-sbatch --export epochs=100,checkpoint_frequency=10,log_image_ingerval=2,data_path=/local_storage/datasets/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
-
-# 345993
-sbatch --export epochs=2000,checkpoint_frequency=100,log_image_ingerval=100,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette.yaml /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
-
-# 346299
-sbatch --export epochs=2000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette.yaml /Midgard/home/rickym/reproduce-mae/run_scripts/run_pretraning.sbatch
-
 
 ###########
-# run full
+# run test
 ###########
-# tiny 346311
-sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=100,log_image_ingerval=2,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette_tiny /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
+# imagenette 
+sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=100,log_image_ingerval=2,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette_testing /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
 
-# coco 346440
-sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=50,log_image_ingerval=2,data_path=/local_storage/datasets/rickym/coco/,output_path=/local_storage/users/rickym/models,config=coco_tiny /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
+# coco 
+sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=100,log_image_ingerval=2,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=coco_testing /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
 
-# real 
+###########
+# run real
+###########
+# imagenette 
 sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
+
+# coco
+sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=coco /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
 
 ###########
 
