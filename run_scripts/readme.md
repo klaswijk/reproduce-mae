@@ -12,10 +12,10 @@ sbatch --export epochs_pretrain=100,epochs_finetune=100,checkpoint_frequency=100
 ###########
 # run real
 ###########
-# imagenette 
+# imagenette 346452
 sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=imagenette /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
 
-# coco
+# coco 346451
 sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models,config=coco /Midgard/home/rickym/reproduce-mae/run_scripts/run_full.sbatch
 
 ###########
