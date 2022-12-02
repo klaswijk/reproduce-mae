@@ -5,6 +5,7 @@ from typing import Callable
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from torchvision.models.vision_transformer import EncoderBlock
 
@@ -147,7 +148,8 @@ class MAE(nn.Module):
     def unpatch(self, x: torch.Tensor) -> torch.Tensor:
         x = self.decoder_proj(x)
         x = x.permute(0, 2, 1)
-        x = x.reshape(x.shape[0], 3, self.image_size, self.image_size)
+        x = F.fold(x, (self.image_size, self.image_size), (self.patch_size,
+                   self.patch_size), stride=self.patch_size)
         return x
 
     def mask(self, x: torch.Tensor) -> tuple:
