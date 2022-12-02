@@ -312,8 +312,8 @@ def test_classification(checkpoint, device, id):
         criterion = BCELoss()
         number_correct = NotImplemented
     else:
-        activate = torch.nn.LogSoftmax(dim=1)
-        criterion = NLLLoss()
+        activate = torch.nn.Identity()
+        criterion = CrossEntropyLoss()
         def number_correct(p, t): return torch.sum(p.argmax(dim=1) == t)
 
     correct = 0
