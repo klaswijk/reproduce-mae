@@ -18,7 +18,7 @@ optimizer:  # Adam
     lr: 0.001
     betas:
         - 0.9
-        - 0.95
+        - 0.999
     weight_decay: 0.001
 scheduler:  
     T_max: 2000
