@@ -38,7 +38,7 @@ def log_reconstruction(epoch, input, output, mask, train):
         wandb.log({f"{dataset_log}_reconstruction": images},
                   step=epoch)
     else:
-        output[:4, :, ~mask] = input[:4, :, ~mask]
+        # output[:4, :, ~mask] = input[:4, :, ~mask]
         images = wandb.Image(
             output[:4, :, :], caption=f"Reconstruction ({dataset} data)")
         wandb.log({f"{dataset_log}_reconstruction": images},
@@ -88,8 +88,13 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             input_patches = model.patch(input)
             output_patches, masked_indices = model(input)
 
+            not_masked = torch.ones(input_patches.shape[2], dtype=torch.bool)
+            not_masked[masked_indices] = False
+
             loss = criterion(
-                input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
+                input_patches[:, :, not_masked], output_patches[:, :, not_masked])
+            # loss = criterion(
+            #     input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
 
             loss.backward()
             optimizer.step()
@@ -112,8 +117,15 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                 input_patches = model.patch(input)
                 output_patches, masked_indices = model(input)
 
+                not_masked = torch.ones(
+                    input_patches.shape[2], dtype=torch.bool)
+                not_masked[masked_indices] = False
+
                 loss = criterion(
-                    input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
+                    input_patches[:, :, not_masked], output_patches[:, :, not_masked])
+
+                # loss = criterion(
+                #     input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
 
                 epoch_val_loss += loss.item()
 
