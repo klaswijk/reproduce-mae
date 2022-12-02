@@ -39,6 +39,7 @@ def log_reconstruction(epoch, input, output, mask, train):
                   step=epoch)
     else:
         # output[:4, :, ~mask] = input[:4, :, ~mask]
+        output[:4, :, ~mask] = 0
         images = wandb.Image(
             output[:4, :, :], caption=f"Reconstruction ({dataset} data)")
         wandb.log({f"{dataset_log}_reconstruction": images},
@@ -55,8 +56,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=name + "_" +
-               str(datetime.datetime.now()), entity="mae_dd2412")
+    wandb.init(config=config, name=name + "_"
+               + str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(
         dataset, True, device, checkpoint, transform_type="pretrain")
@@ -86,15 +87,13 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             optimizer.zero_grad()
 
             input_patches = model.patch(input)
-            output_patches, masked_indices = model(input)
+            output_patches, non_masked_indices = model(input)
 
-            not_masked = torch.ones(input_patches.shape[2], dtype=torch.bool)
-            not_masked[masked_indices] = False
+            masked_indicies = torch.ones(input_patches.shape[2], dtype=torch.bool)
+            masked_indicies[non_masked_indices] = False
 
             loss = criterion(
-                input_patches[:, :, not_masked], output_patches[:, :, not_masked])
-            # loss = criterion(
-            #     input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
+                input_patches[:, :, masked_indicies], output_patches[:, :, masked_indicies])
 
             loss.backward()
             optimizer.step()
@@ -104,10 +103,10 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             with torch.no_grad():
                 for input, _ in train_reconstruction_loader:
                     input = input.to(device)
-                    output_patches, masked_indices = model(input)
+                    output_patches, non_masked_indices = model(input)
                     output = model.unpatch(output_patches)
                     mask = mask_from_patches(
-                        masked_indices, image_size, patch_size)
+                        non_masked_indices, image_size, patch_size)
             log_reconstruction(epoch, input, output, mask, True)
 
         with torch.no_grad():
@@ -115,14 +114,14 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                 input = input.to(device)
 
                 input_patches = model.patch(input)
-                output_patches, masked_indices = model(input)
+                output_patches, non_masked_indices = model(input)
 
-                not_masked = torch.ones(
+                masked_indicies = torch.ones(
                     input_patches.shape[2], dtype=torch.bool)
-                not_masked[masked_indices] = False
+                masked_indicies[non_masked_indices] = False
 
                 loss = criterion(
-                    input_patches[:, :, not_masked], output_patches[:, :, not_masked])
+                    input_patches[:, :, masked_indicies], output_patches[:, :, masked_indicies])
 
                 # loss = criterion(
                 #     input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
@@ -131,7 +130,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
         if epoch == 1 or epoch % log_image_ingerval == 0:
             mask = mask_from_patches(
-                masked_indices, image_size, patch_size)
+                non_masked_indices, image_size, patch_size)
             output = model.unpatch(output_patches)
             log_reconstruction(epoch, input, output, mask, False)
 
@@ -169,7 +168,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             )
             best_val_loss = (epoch, epoch_val_loss)
 
-        elif epoch-best_val_loss[0] > config["lookahead"]:
+        elif epoch - best_val_loss[0] > config["lookahead"]:
             print(
                 f"Early stopping at \nEpoch={epoch} loss={epoch_val_loss} in favor of \nEpoch={best_val_loss[0]} loss={best_val_loss[1]}")
             # stopping based on how far we looked ahead
@@ -224,7 +223,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=name+"_"+str(datetime.datetime.now()))
+    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
 
     trainloader, valloader = get_dataloader(
         dataset, True, device, checkpoint, transform_type="finetune")
@@ -302,7 +301,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             )
             best_val_loss = (epoch, epoch_val_loss)
 
-        elif epoch-best_val_loss[0] > config["lookahead"]:
+        elif epoch - best_val_loss[0] > config["lookahead"]:
             print(
                 f"Early stopping at \nEpoch={epoch} loss={epoch_val_loss} in favor of \nEpoch={best_val_loss[0]} loss={best_val_loss[1]}")
             # stopping based on how far we looked ahead
@@ -317,7 +316,7 @@ def test_classification(checkpoint, device, id):
     image_size, n_classes, multilabel = info[dataset]
     name = id + "_test_classification"
 
-    wandb.init(config=config, name=name+"_"+str(datetime.datetime.now()))
+    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
 
     testloader = get_dataloader(
         dataset, False, device, checkpoint, transform_type=None)
@@ -337,19 +336,21 @@ def test_classification(checkpoint, device, id):
             correct = (p >= 0.5) == t
             not_correct = ~correct
             if type_of_correct == "tp":
-                out = correct*t  # is correct then mask for true
+                out = correct * t  # is correct then mask for true
             elif type_of_correct == "tn":
-                out = correct*(~t)  # is correct then mask for false
+                out = correct * (~t)  # is correct then mask for false
             elif type_of_correct == "fp":
-                out = not_correct*t  # is not correct then mask for true
+                out = not_correct * t  # is not correct then mask for true
             elif type_of_correct == "fn":
-                out = not_correct*(~t)  # is not correct then mask for false
+                out = not_correct * (~t)  # is not correct then mask for false
             return torch.sum(out)
 
     else:
         activate = torch.nn.Identity()
         criterion = CrossEntropyLoss()
-        def number_correct(p, t): return torch.sum(p.argmax(dim=1) == t)
+
+        def number_correct(p, t):
+            return torch.sum(p.argmax(dim=1) == t)
 
     tp = 0
     tn = 0

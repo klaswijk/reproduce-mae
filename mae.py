@@ -110,7 +110,7 @@ class MAE(nn.Module):
         self.patch_size = patch_size
         self.encoder_hidden_dim = encoder_hidden_dim
         self.seq_length = (image_size // patch_size) ** 2
-        self.mask_length = int((1 - mask_ratio) * self.seq_length)
+        self.non_masked_length = int((1 - mask_ratio) * self.seq_length)
 
         # Encoder
         self.encoder_norm = nn.LayerNorm(encoder_hidden_dim)
@@ -158,14 +158,14 @@ class MAE(nn.Module):
         # Class token at index 0
         perm = torch.cat([torch.zeros(1, dtype=torch.long), perm])
         x = x[:, perm]
-        masked = x[:, :self.mask_length + 1]
+        masked = x[:, :self.non_masked_length + 1]
         return masked, perm
 
     def unmask(self, x: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
         unshuf = torch.zeros_like(perm)
         unshuf[perm] = torch.arange(self.seq_length + 1)
         x = x[:, unshuf]
-        x[:, perm[1:self.mask_length + 1]] = 0
+        x[:, perm[1:self.non_masked_length + 1]] = 0
         return x
 
     def encoder_forward(self, x: torch.Tensor, mask: bool) -> tuple:
@@ -178,7 +178,7 @@ class MAE(nn.Module):
             masked = self.encoder_norm(masked)
             x = self.unmask(x, masked, perm)
             # Don't include the class token in perm
-            return x, perm[1:self.mask_length + 1] - 1
+            return x, perm[1:self.non_masked_length + 1] - 1
         else:
             x = self.encoder(x)
             x = self.encoder_norm(x)
@@ -193,11 +193,11 @@ class MAE(nn.Module):
         return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x, masked_indices = self.encoder_forward(x, True)
+        x, non_masked_patch_indices = self.encoder_forward(x, True)
         x = x[:, 1:]  # Remove class token
         x = self.hidden_proj(x)
         x = self.decoder_forward(x)
-        return x, masked_indices
+        return x, non_masked_patch_indices
 
     def classify(self, x: torch.Tensor) -> torch.Tensor:
         x, _ = self.encoder_forward(x, False)
