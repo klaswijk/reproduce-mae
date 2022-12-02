@@ -81,19 +81,12 @@ class CocoMultilabel(Dataset):
         return image, label
 
 
-def coco(train, device, checkpoint):
+def coco(train, device, checkpoint, transform):
     """Returns (dataloader, image_size)"""
     data_path = checkpoint["data_path"]
     limit = checkpoint["config"]["data"]["limit"]
     val_ratio = checkpoint["config"]["data"]["val_ratio"]
     batch_size = checkpoint["config"]["batch_size"]
-
-    transform = transforms.Compose([
-        transforms.Resize(80, antialias=True),
-        transforms.ToTensor(),
-        transforms.RandomCrop(64),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
 
     if train:
         dataset = CocoMultilabel(
@@ -283,12 +276,48 @@ def cifar(train, device, checkpoint):
         return testloader
 
 
-def get_dataloader(dataset, train, device, checkpoint):
+def get_dataloader(dataset, train, device, checkpoint, transform_type=None):
+    if transform_type == "finetune":
+        if dataset == "coco":
+            transform = transforms.Compose([
+                transforms.Resize(80, antialias=True),
+                transforms.RandAugment(),
+                transforms.RandomCrop(64),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.RandAugment(),
+                transforms.RandomCrop(info[dataset].image_size),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ])
+    elif transform_type == "pretrain":
+        if dataset == "coco":
+            transform = transforms.Compose([
+                transforms.RandomResizedCrop(64, ratio=(1, 1)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.RandomCrop(info[dataset].image_size),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize(info[dataset].image_size, antialias=True),
+            transforms.RandomCrop(info[dataset].image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
     if dataset == "cifar10":
         return cifar(train, device, checkpoint)
     elif dataset == "imagenette":
         return imagenette(train, device, checkpoint)
     elif dataset == "coco":
-        return coco(train, device, checkpoint)
+        return coco(train, device, checkpoint, transform)
     else:
         raise ValueError(f"Unknown dataset '{dataset}'")
