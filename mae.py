@@ -47,20 +47,75 @@ class Transformer(nn.Module):
         return self.ln(self.layers(self.dropout(input)))
 
 
+def positionalencoding2d(d_model, height, width):
+    """
+    :param d_model: dimension of the model
+    :param height: height of the positions
+    :param width: width of the positions
+    :return: d_model*height*width position matrix
+    """
+    if d_model % 4 != 0:
+        raise ValueError("Cannot use sin/cos positional encoding with "
+                         "odd dimension (got dim={:d})".format(d_model))
+    pe = torch.zeros(d_model, height, width)
+    # Each dimension use half of d_model
+    d_model = int(d_model / 2)
+    div_term = torch.exp(torch.arange(0., d_model, 2) *
+                         -(math.log(10000.0) / d_model))
+    pos_w = torch.arange(0., width).unsqueeze(1)
+    pos_h = torch.arange(0., height).unsqueeze(1)
+    pe[0:d_model:2, :, :] = torch.sin(
+        pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+    pe[1:d_model:2, :, :] = torch.cos(
+        pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+    pe[d_model::2, :, :] = torch.sin(
+        pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
+    pe[d_model + 1::2, :,
+        :] = torch.cos(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
+
+    return pe
+
+
 class PositionalEncoding(nn.Module):
     """
     Sinusoidal positional encoding.
     Based on https://pytorch.org/tutorials/beginner/transformer_tutorial.html
     """
 
-    def __init__(self, d_model: int, seq_len: int):
+    # def __init__(self, d_model: int, seq_len: int):
+    #    super().__init__()
+    #    position = torch.arange(seq_len).unsqueeze(1)
+    #    div_term = torch.exp(torch.arange(0, d_model, 2)
+    #                         * (-math.log(10000.0) / d_model))
+    #    pe = torch.zeros(1, seq_len, d_model)
+    #    pe[0, :, 0::2] = torch.sin(position * div_term)
+    #    pe[0, :, 1::2] = torch.cos(position * div_term)
+    #    self.register_buffer('pe', pe)
+
+    def __init__(self, d_model: int, seq_len: int, token):
         super().__init__()
-        position = torch.arange(seq_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2)
-                             * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(1, seq_len, d_model)
-        pe[0, :, 0::2] = torch.sin(position * div_term)
-        pe[0, :, 1::2] = torch.cos(position * div_term)
+        height = width = int(math.sqrt(seq_len - 1 if token else seq_len))
+        pe = torch.zeros(d_model, height, width)
+        # Each dimension use half of d_model
+        d_model = int(d_model / 2)
+        div_term = torch.exp(torch.arange(0., d_model, 2) *
+                             -(math.log(10000.0) / d_model))
+        pos_w = torch.arange(0., width).unsqueeze(1)
+        pos_h = torch.arange(0., height).unsqueeze(1)
+        pe[0:d_model:2, :, :] = torch.sin(
+            pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+        pe[1:d_model:2, :, :] = torch.cos(
+            pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+        pe[d_model::2, :, :] = torch.sin(
+            pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
+        pe[d_model + 1::2, :, :] = torch.cos(pos_h * div_term).transpose(
+            0, 1).unsqueeze(2).repeat(1, 1, width)
+
+        pe = pe.reshape(d_model * 2, seq_len - 1 if token else seq_len)
+        if token:
+            pe = torch.cat([torch.zeros((pe.shape[0], 1)), pe], dim=1)
+        pe = pe.permute(1, 0)
+        pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -99,14 +154,14 @@ class MAE(nn.Module):
         self.encoder_proj = nn.Conv2d(
             3, encoder_hidden_dim, patch_size, patch_size)
         self.encoder_pos_encoding = PositionalEncoding(
-            encoder_hidden_dim, self.seq_length + 1)
+            encoder_hidden_dim, self.seq_length + 1, True)
         self.encoder = Transformer(
             encoder_layers, encoder_num_heads, encoder_hidden_dim, encoder_mlp_dim)
 
         # Decoder
         self.hidden_proj = nn.Linear(encoder_hidden_dim, decoder_hidden_dim)
         self.decoder_pos_encoding = PositionalEncoding(
-            decoder_hidden_dim, self.seq_length)
+            decoder_hidden_dim, self.seq_length, False)
         self.decoder = Transformer(
             decoder_layers, decoder_num_heads, decoder_hidden_dim, decoder_mlp_dim)
         self.decoder_proj = nn.Linear(decoder_hidden_dim, 3 * patch_size**2)
