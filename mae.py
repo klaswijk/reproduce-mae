@@ -159,8 +159,10 @@ class MAE(nn.Module):
         return masked, perm
 
     def unmask(self, x: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
-        x = torch.zeros_like(x)
-        x[:, perm[:self.mask_length + 1]] = masked
+        unshuf = torch.zeros_like(perm)
+        unshuf[perm] = torch.arange(self.seq_length + 1)
+        out = x[:, unshuf]
+        out[:, perm[1:self.mask_length + 1]] = 0
         return x
 
     def encoder_forward(self, x: torch.Tensor, mask: bool) -> tuple:
