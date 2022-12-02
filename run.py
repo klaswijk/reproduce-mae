@@ -101,8 +101,6 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
                     output, masked_indices = model(input)
                     mask = mask_from_patches(
                         masked_indices, image_size, patch_size)
-                    loss = criterion(input[:, :, mask], output[:, :, mask])
-                    epoch_val_loss += loss.item()
             log_reconstruction(epoch, input, output, mask, True)
 
         with torch.no_grad():
