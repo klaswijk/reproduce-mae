@@ -4,7 +4,7 @@ import torch
 import wandb
 
 from torch.nn import MSELoss, NLLLoss, BCELoss, UpsamplingNearest2d
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
 
@@ -64,7 +64,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
-    optimizer = Adam(model.parameters(), **config["optimizer"])
+    optimizer = AdamW(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -215,7 +215,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
         criterion = NLLLoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
-    optimizer = Adam(model.parameters(), **config["optimizer"])
+    optimizer = AdamW(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

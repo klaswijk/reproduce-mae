@@ -3,7 +3,7 @@ import argparse
 import yaml
 import torch
 
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import run
@@ -16,7 +16,7 @@ def initialize(config):
     torch.manual_seed(config["random_seed"])
     image_size, n_classes, _ = info[config["data"]["dataset"]]
     model = MAE(image_size, n_classes, **config["model"])
-    optimizer = Adam(model.parameters(), **config["optimizer"])
+    optimizer = AdamW(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     return {
         "config": config,
@@ -33,7 +33,7 @@ def overwrite(checkpoint, config):
     """Overwrite the optimizer and sheduler"""
     image_size, n_classes, _ = info[config["data"]["dataset"]]
     model = MAE(image_size, n_classes, **config["model"])
-    optimizer = Adam(model.parameters(), **config["optimizer"])
+    optimizer = AdamW(model.parameters(), **config["optimizer"])
     scheduler = CosineAnnealingLR(optimizer, **config["scheduler"])
     checkpoint["optimizer_state_dict"] = optimizer.state_dict()
     checkpoint["scheduler_state_dict"] = scheduler.state_dict()
