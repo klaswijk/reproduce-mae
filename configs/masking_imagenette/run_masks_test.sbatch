@@ -35,7 +35,7 @@ for config in mask00 mask03 mask05 mask07 mask09
 do
     echo "pre-traning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
-        --config "/Midgard/home/rickym/reproduce-mae/configs/masking_imagenett/${config}_pretrain.yaml" \
+        --config "/Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/${config}_pretrain.yaml" \
         --id "${SLURM_JOB_ID}_${config}" \
         --epochs "$epochs_pretrain" \
         --checkpoint-frequency "$checkpoint_frequency" \
@@ -45,7 +45,7 @@ do
 
     echo "finetuning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --finetune \
-        --config "configs/masking_imagenett/${config}_finetune.yaml" \
+        --config "configs/masking_imagenette/${config}_finetune.yaml" \
         --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_pretrain/current_best.pth" \
         --epochs "$epochs_finetune" \
         --id "${SLURM_JOB_ID}_${config}" \
