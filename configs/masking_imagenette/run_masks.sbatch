@@ -32,7 +32,7 @@ echo "output_path: $output_path"
 . ~/miniconda3/etc/profile.d/conda.sh
 conda activate mae 
 
-for config in mask00 mask03 mask05 mask07 mask09 
+for config in mask01 mask03 mask05 mask07 mask09 
 do
     echo "pre-traning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
