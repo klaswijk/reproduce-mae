@@ -10,7 +10,7 @@
 
 
 #call with: sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/run_masks.sbatch
-#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/run_masks.sbatch
+#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/run_masks_test.sbatch
 # 346580
 
 epochs_pretrain=4000
@@ -33,28 +33,28 @@ conda activate mae
 
 for config in mask00 mask03 mask05 mask07 mask09 
 do
-    echo "pre-traning $config"
+    echo "pre-traning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
-        --config /Midgard/home/rickym/reproduce-mae/configs/masking_imagenett/${config}_pretrain.yaml \
-        --id ${SLURM_JOB_ID}_$config \
-        --epochs $epochs_pretrain \
-        --checkpoint-frequency $checkpoint_frequency \
-        --log_image_ingerval $log_image_ingerval \
-        --data-path $data_path \
-        --output-path $output_path \
+        --config "/Midgard/home/rickym/reproduce-mae/configs/masking_imagenett/${config}_pretrain.yaml" \
+        --id "${SLURM_JOB_ID}_${config}" \
+        --epochs "$epochs_pretrain" \
+        --checkpoint-frequency "$checkpoint_frequency" \
+        --log_image_ingerval "$log_image_ingerval" \
+        --data-path "$data_path" \
+        --output-path "$output_path" \
 
-    echo "finetuning $config"
+    echo "finetuning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --finetune \
-        --config configs/masking_imagenett/${config}_finetune.yaml \
-        --checkpoint $output_path/checkpoints/${SLURM_JOB_ID}_$config_pretrain/current_best.pth \
-        --epochs $epochs_finetune \
-        --id ${SLURM_JOB_ID}_$config \
-        --checkpoint-frequency $checkpoint_frequency \
+        --config "configs/masking_imagenett/${config}_finetune.yaml" \
+        --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_pretrain/current_best.pth" \
+        --epochs "$epochs_finetune" \
+        --id "${SLURM_JOB_ID}_${config}" \
+        --checkpoint-frequency "$checkpoint_frequency" \
 
-    echo "test classification $config"
+    echo "test classification ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --test-classification \
-        --checkpoint $output_path/checkpoints/${SLURM_JOB_ID}_$config_finetune/current_best.pth \
-        --id ${SLURM_JOB_ID}_$config \
+        --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_finetune/current_best.pth" \
+        --id "${SLURM_JOB_ID}_${config}" \
 
-    echo "Finished $config"
+    echo "Finished ${config}"
 done
