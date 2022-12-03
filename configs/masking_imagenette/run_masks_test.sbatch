@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --mem  16GB
-#SBATCH --cpus-per-task 2
+#SBATCH --cpus-per-task 4
 #SBATCH --constrain "smaug"
 #SBATCH --time 10:00:00
 #SBATCH --mail-type BEGIN,END,FAIL
