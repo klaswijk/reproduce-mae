@@ -13,7 +13,7 @@ model: # MAE
   decoder_num_heads: 3
   decoder_hidden_dim: 192
   decoder_mlp_dim: 768
-batch_size: 256
+batch_size: 64
 optimizer: # Adam
   lr: 0.001
   betas:
