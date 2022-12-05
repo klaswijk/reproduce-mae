@@ -13,7 +13,7 @@ DatasetInfo = namedtuple(
 info = {
     "cifar10": DatasetInfo(image_size=32, n_classes=10, multilabel=False),
     "imagenette": DatasetInfo(image_size=160, n_classes=10, multilabel=False),
-    "coco": DatasetInfo(image_size=160, n_classes=80, multilabel=True)
+    "coco": DatasetInfo(image_size=96, n_classes=80, multilabel=True)
 }
 
 
@@ -286,9 +286,10 @@ def get_dataloader(dataset, train, device, checkpoint, transform_type=None):
     if transform_type == "finetune":
         if dataset == "coco":
             transform = transforms.Compose([
-                transforms.Resize(180, antialias=True),
+                transforms.Resize(
+                    int(info["coco"].image_size * 1.1), antialias=True),
                 transforms.RandAugment(),
-                transforms.RandomCrop(160),
+                transforms.RandomCrop(info["coco"].image_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ])
@@ -302,7 +303,8 @@ def get_dataloader(dataset, train, device, checkpoint, transform_type=None):
     elif transform_type == "pretrain":
         if dataset == "coco":
             transform = transforms.Compose([
-                transforms.RandomResizedCrop(160, ratio=(1, 1)),
+                transforms.RandomResizedCrop(
+                    info["coco"].image_size, ratio=(1, 1)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ])
