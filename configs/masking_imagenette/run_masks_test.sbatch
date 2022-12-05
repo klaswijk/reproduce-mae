@@ -24,7 +24,7 @@ echo "Starting job ${SLURM_JOB_ID} on ${SLURMD_NODENAME}"
 echo "epochs_pretrain: $epochs_pretrain"
 echo "epochs_finetune: $epochs_finetune"
 echo "checkpoint_frequency: $checkpoint_frequency"
-echo "log_image_ingerval: $log_image_ingerval"
+echo "log_image_interval: $log_image_ingerval"
 echo "data_path: $data_path"
 echo "output_path: $output_path"
 
