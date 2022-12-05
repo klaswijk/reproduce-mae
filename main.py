@@ -53,7 +53,7 @@ def parse_arguments():
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--checkpoint-frequency", type=int, default=100)
     parser.add_argument("--id")
-    parser.add_argument("--log_image_ingerval", type=int, default=100)
+    parser.add_argument("--log_image_interval", type=int, default=100)
     parser.add_argument("--data-path", default="./data")
     parser.add_argument("--output-path", default="./")
     return parser.parse_args()
