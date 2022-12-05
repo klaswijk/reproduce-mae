@@ -39,7 +39,7 @@ do
         --id "${SLURM_JOB_ID}_${config}" \
         --epochs "$epochs_pretrain" \
         --checkpoint-frequency "$checkpoint_frequency" \
-        --log_image_ingerval "$log_image_ingerval" \
+        --log_image_interval "$log_image_ingerval" \
         --data-path "$data_path" \
         --output-path "$output_path" \
 
