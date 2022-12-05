@@ -1,15 +1,14 @@
-import os
 import argparse
-import yaml
-import torch
+import os
 
+import torch
+import yaml
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import run
-
-from mae import MAE
 from data import info
+from mae import MAE
 
 
 def initialize(config):
@@ -60,7 +59,9 @@ def parse_arguments():
 
 
 def main():
+    print("Starting main!")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device used: {device}")
     args = parse_arguments()
 
     for dir in ["checkpoints", "plots"]:
