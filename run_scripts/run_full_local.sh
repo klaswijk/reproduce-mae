@@ -8,7 +8,7 @@ python ./main.py --pretrain \
     --id $1 \
     --epochs $3 \
     --checkpoint-frequency $5 \
-    --log_image_ingerval $6 \
+    --log_image_interval $6 \
     --data-path ./data \
     --output-path ./ \
 
