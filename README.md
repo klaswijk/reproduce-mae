@@ -4,16 +4,16 @@ Reproduction of "Masked Autoencoders Are Scalable Vision Learners"
 ## Example Usage
 Pretrain
 ```
-python main.py --pretrain --config configs/cifar10.yaml --epochs 100 --id dev --checkpoint-frequency 10 --log_image_ingerval 2
-python main.py --pretrain --config configs/imagenette.yaml --epochs 10 --id dev --checkpoint-frequency 10 --log_image_ingerval 2
+python main.py --pretrain --config configs/cifar10.yaml --epochs 100 --id dev --checkpoint-frequency 10 --log_image_interval 2
+python main.py --pretrain --config configs/imagenette.yaml --epochs 10 --id dev --checkpoint-frequency 10 --log_image_interval 2
 
-python main.py --pretrain --config configs/imagenette_pretrain.yaml --epochs 1000 --id dev_large --checkpoint-frequency 10000 --log_image_ingerval 2
+python main.py --pretrain --config configs/imagenette_pretrain.yaml --epochs 1000 --id dev_large --checkpoint-frequency 10000 --log_image_interval 2
 
 ```
 
 # test iamgenetter 
 ```
-python main.py --pretrain --config configs/imagenette_testing_pretrain.yaml --epochs 100 --id dev --checkpoint-frequency 1 --log_image_ingerval 1
+python main.py --pretrain --config configs/imagenette_testing_pretrain.yaml --epochs 100 --id dev --checkpoint-frequency 1 --log_image_interval 1
 
 python main.py --finetune --config configs/imagenette_testing_finetune.yaml --checkpoint /home/morningstar/Documents/github/reproduce-mae/checkpoints/dev_pretrain/current_best.pth --epochs 100 --id dev --checkpoint-frequency 1
 
@@ -22,7 +22,7 @@ python main.py --test-classification --id dev --checkpoint /home/morningstar/Doc
 
 # test coco
 ```
-python main.py --pretrain --config configs/coco_testing_pretrain.yaml --epochs 10 --id dev_coco --checkpoint-frequency 1 --log_image_ingerval 1
+python main.py --pretrain --config configs/coco_testing_pretrain.yaml --epochs 10 --id dev_coco --checkpoint-frequency 1 --log_image_interval 1
 
 python main.py --finetune --config configs/coco_testing_finetune.yaml --checkpoint /home/morningstar/Documents/github/reproduce-mae/checkpoints/dev_coco_pretrain/current_best.pth --epochs 10 --id dev_coco --checkpoint-frequency 1
 
