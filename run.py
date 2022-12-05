@@ -1,23 +1,22 @@
-import os
 import datetime
-import torch
-import wandb
+import os
 
+import numpy as np
+import torch
 from torch.nn import MSELoss, CrossEntropyLoss, BCELoss, UpsamplingNearest2d
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
 
-from mae import MAE
+import wandb
 from data import info, get_dataloader
+from mae import MAE
 from plot import plot_reconstruction
-
-import numpy as np
 
 
 def mask_from_patches(masked_indices, image_size, patch_size):
     seq_length = image_size // patch_size
-    mask = torch.ones(seq_length**2)
+    mask = torch.ones(seq_length ** 2)
     mask[masked_indices] = 0
     mask = mask.reshape(seq_length, seq_length)
     return UpsamplingNearest2d(image_size)(mask[None, None])[0, 0].type(torch.bool)
@@ -57,7 +56,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
     wandb.init(config=config, name=name + "_"
-               + str(datetime.datetime.now()), entity="mae_dd2412")
+                                   + str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(
         dataset, True, device, checkpoint, transform_type="pretrain")
@@ -72,8 +71,13 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-    wandb.config.update({"number of train samples": len(
-        trainloader.dataset), "number of validation samples": len(valloader.dataset)})
+    wandb.config.update(
+        {"number of train samples": len(trainloader.dataset),
+         "number of validation samples": len(valloader.dataset),
+         "number of parameters encoder": sum([torch.numel(ob) for ob in list(model.encoder.parameters())]),
+         "number of parameters decoder": sum([torch.numel(ob) for ob in list(model.decoder.parameters())]),
+         "number of parameters classifier": sum([torch.numel(ob) for ob in list(model.classifier.parameters())]),
+         })
 
     start = checkpoint["pretrain_epoch"] + 1
 
@@ -274,7 +278,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
         epoch_train_loss /= len(trainloader.dataset)
         epoch_val_loss /= len(valloader.dataset)
         wandb.log({"epoch": epoch, "train_loss": epoch_train_loss,
-                  "val_loss": epoch_val_loss})
+                   "val_loss": epoch_val_loss})
 
         scheduler.step()
 
