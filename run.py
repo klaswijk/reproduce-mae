@@ -3,12 +3,13 @@ import os
 
 import numpy as np
 import torch
+import torchmetrics
+import wandb
 from torch.nn import MSELoss, CrossEntropyLoss, BCELoss, UpsamplingNearest2d
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
 
-import wandb
 from data import info, get_dataloader
 from mae import MAE
 from plot import plot_reconstruction
@@ -225,6 +226,12 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     image_size, n_classes, multilabel = info[dataset]
     name = id + "_finetune"
 
+    accuracy = torchmetrics.Accuracy(task='multilabel' if multilabel else 'multiclass',
+                                     num_classes=n_classes,
+                                     num_labels=n_classes,
+                                     top_k=1,
+                                     ).to(device)
+
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
@@ -268,17 +275,24 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             epoch_train_loss = loss.item()
 
         with torch.no_grad():
+            targets = []
+            outputs = []
             for input, target in valloader:
                 input = input.to(device)
                 target = target.to(device)
                 output = model.classify(input)
                 loss = criterion(activate(output), target)
                 epoch_val_loss = loss.item()
+                targets.append(target)
+                outputs.append(output)
+
+            targets = torch.cat(targets)
+            outputs = torch.cat(outputs)
 
         epoch_train_loss /= len(trainloader.dataset)
         epoch_val_loss /= len(valloader.dataset)
         wandb.log({"epoch": epoch, "train_loss": epoch_train_loss,
-                   "val_loss": epoch_val_loss})
+                   "val_loss": epoch_val_loss, "val_accuracy": accuracy(outputs, targets)})
 
         scheduler.step()
 
@@ -363,6 +377,29 @@ def test_classification(checkpoint, device, id):
     fn = 0
     amount_active = 0
     total_loss = 0
+
+    ks = [1, 3, 5]
+    task = 'multilabel' if multilabel else 'multiclass'
+    metrics = {}
+    for k in ks:
+        metrics[f"acc_k_{k}"] = torchmetrics.Accuracy(task=task,
+                                                      num_classes=n_classes,
+                                                      num_labels=n_classes,
+                                                      top_k=k,
+                                                      ).to(device)
+        metrics[f"hamming_k_{k}"] = torchmetrics.HammingDistance(task=task,
+                                                                 num_classes=n_classes,
+                                                                 num_labels=n_classes,
+                                                                 top_k=k,
+                                                                 ).to(device)
+        metrics[f"f1_k_{k}"] = torchmetrics.F1Score(task=task,
+                                                    num_classes=n_classes,
+                                                    num_labels=n_classes,
+                                                    top_k=k,
+                                                    ).to(device)
+
+    targets = []
+    outputs = []
     with torch.no_grad():
         for input, target in testloader:
             input = input.to(device)
@@ -370,6 +407,7 @@ def test_classification(checkpoint, device, id):
             output = model.classify(input)
             loss = criterion(activate(output), target)
             total_loss += loss.item()
+
             tp += number_correct(output, target)
             if multilabel:
                 tn += number_correct(output, target, "tn")
@@ -377,17 +415,27 @@ def test_classification(checkpoint, device, id):
                 fn += number_correct(output, target, "fn")
             amount_active += torch.sum(target)
 
+            # adding
+            targets.append(target)
+            outputs.append(output)
+
+    targets = torch.cat(targets)
+    outputs = torch.cat(outputs)
+
+    for (name, metric) in metrics.items():
+        metrics[name] = metric(outputs, targets)
+
     if multilabel:
         test_loss = total_loss / len(testloader)
         res = {"test_loss": test_loss, "true positive": tp,
                "true negative": tn, "false positive": fp, "false negative": fn}
-
+        res.update(metrics)
         wandb.log(res)
-        print(res)
 
     else:
-        test_loss = total_loss / len(testloader)
-        test_acc = tp / (len(testloader.dataset))
+        res = {"test_loss": total_loss / len(testloader),
+               "test_acc": tp / (len(testloader.dataset))}
+        res.update(metrics)
+        wandb.log(res)
 
-        wandb.log({"test_loss": test_loss, "test_acc": test_acc})
-        print(f"Test loss: {test_loss} Test accuracy: {test_acc}")
+    print(res)
