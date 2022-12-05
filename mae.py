@@ -163,7 +163,7 @@ class MAE(nn.Module):
 
     def unmask(self, x_shape: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
         # Transfer masked to sparse vector
-        x = torch.zeros(x_shape)
+        x = torch.zeros(x_shape, device=masked.get_device())
         x[:, :self.non_masked_length + 1] = masked
 
         # Unshuffle
