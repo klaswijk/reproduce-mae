@@ -92,7 +92,7 @@ def main():
             device,
             args.checkpoint_frequency,
             args.id,
-            args.log_image_ingerval
+            args.log_image_interval
         )
     elif args.test_reconstruction:
         run.test_reconstruction(

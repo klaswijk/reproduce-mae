@@ -46,7 +46,7 @@ def log_reconstruction(epoch, input, output, mask, train):
                   step=epoch)
 
 
-def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ingerval):
+def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_interval):
     config = checkpoint["config"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
@@ -89,7 +89,8 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             input_patches = model.patch(input)
             output_patches, non_masked_indices = model(input)
 
-            masked_indicies = torch.ones(input_patches.shape[2], dtype=torch.bool)
+            masked_indicies = torch.ones(
+                input_patches.shape[2], dtype=torch.bool)
             masked_indicies[non_masked_indices] = False
 
             loss = criterion(
@@ -99,7 +100,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
             optimizer.step()
             epoch_train_loss += loss.item()
 
-        if epoch == 1 or epoch % log_image_ingerval == 0:
+        if epoch == 1 or epoch % log_image_interval == 0:
             with torch.no_grad():
                 for input, _ in train_reconstruction_loader:
                     input = input.to(device)
@@ -128,7 +129,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_ing
 
                 epoch_val_loss += loss.item()
 
-        if epoch == 1 or epoch % log_image_ingerval == 0:
+        if epoch == 1 or epoch % log_image_interval == 0:
             mask = mask_from_patches(
                 non_masked_indices, image_size, patch_size)
             output = model.unpatch(output_patches)
