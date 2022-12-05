@@ -161,9 +161,10 @@ class MAE(nn.Module):
         masked = x[:, :self.non_masked_length + 1]
         return masked, perm
 
-    def unmask(self, x_shape: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
+    def unmask(self, x_: torch.Tensor, masked: torch.Tensor, perm: torch.Tensor) -> torch.Tensor:
+
         # Transfer masked to sparse vector
-        x = torch.zeros(x_shape, device=masked.get_device())
+        x = torch.zeros_like(x_)
         x[:, :self.non_masked_length + 1] = masked
 
         # Unshuffle
@@ -180,7 +181,7 @@ class MAE(nn.Module):
             masked, perm = self.mask(x)
             masked = self.encoder(masked)
             masked = self.encoder_norm(masked)
-            x = self.unmask(x.shape, masked, perm)
+            x = self.unmask(x, masked, perm)
             # Don't include the class token in perm
             return x, perm[1:self.non_masked_length + 1] - 1
         else:
