@@ -129,9 +129,6 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
                 loss = criterion(
                     input_patches[:, :, masked_indicies], output_patches[:, :, masked_indicies])
 
-                # loss = criterion(
-                #     input_patches[:, :, masked_indices], output_patches[:, :, masked_indices])
-
                 epoch_val_loss += loss.item()
 
         if epoch == 1 or epoch % log_image_interval == 0:
@@ -202,15 +199,25 @@ def test_reconstruction(checkpoint, device):
 
     with torch.no_grad():
         total_loss = 0
-
         for input, _ in testloader:
             input = input.to(device)
-            output, masked_indices = model(input)
-            mask = mask_from_patches(masked_indices, image_size, patch_size)
-            loss = criterion(input[:, :, mask], output[:, :, mask])
+
+            input_patches = model.patch(input)
+            output_patches, non_masked_indices = model(input)
+
+            masked_indicies = torch.ones(
+                input_patches.shape[2], dtype=torch.bool)
+            masked_indicies[non_masked_indices] = False
+
+            loss = criterion(
+                input_patches[:, :, masked_indicies], output_patches[:, :, masked_indicies])
+
             total_loss += loss.item()
 
     epoch = checkpoint["pretrain_epoch"]
+    mask = mask_from_patches(
+        non_masked_indices, image_size, patch_size)
+    output = model.unpatch(output_patches)
     plot_reconstruction(
         f"{checkpoint['output_path']}plots/{dataset}/reconstruction/test/epoch_{epoch}.png",
         input, output, mask
