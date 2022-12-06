@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-#SBATCH --mem  16GB
+#SBATCH --mem  32GB
 #SBATCH --gres gpu:1
-#SBATCH --cpus-per-task 4
+#SBATCH --cpus-per-task 8
 #SBATCH --constrain "smaug"
 #SBATCH --time 120:00:00
 #SBATCH --mail-type BEGIN,END,FAIL
@@ -43,6 +43,7 @@ do
         --log_image_interval "$log_image_ingerval" \
         --data-path "$data_path" \
         --output-path "$output_path" \
+        --data-in-memory \
 
     echo "finetuning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --finetune \
@@ -51,11 +52,13 @@ do
         --epochs "$epochs_finetune" \
         --id "${SLURM_JOB_ID}_${config}" \
         --checkpoint-frequency "$checkpoint_frequency" \
+        --data-in-memory \
 
     echo "test classification ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --test-classification \
         --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_finetune/current_best.pth" \
         --id "${SLURM_JOB_ID}_${config}" \
+        --data-in-memory \
 
     echo "Finished ${config}"
 done
