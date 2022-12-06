@@ -59,7 +59,7 @@ class ImageNetteDataset(Dataset):
 
 class CocoMultilabel(Dataset):
 
-    def __init__(self, path, transform=None, test=False, version="2017", in_memory=True):
+    def __init__(self, path, transform=None, test=False, version="2017", in_memory=False):
         datatype = "val" if test else "train"
         with open(f"{path}/coco/annotations/instances_{datatype}{version}.json", "r") as f:
             instances = json.load(f)
@@ -116,7 +116,7 @@ def get_transform(dataset_name, transform_type):
     return transforms.Compose(transform_list)
 
 
-def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None):
+def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None, in_memory=False):
     # Get transform
     if not train:
         transform_type = None
@@ -141,7 +141,8 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None)
         dataset = CocoMultilabel(
             data_path,
             transform=transform,
-            test=not train
+            test=not train,
+            in_memory=in_memory
         )
     else:
         raise ValueError(f"Unknown dataset '{dataset_name}'")

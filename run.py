@@ -46,7 +46,7 @@ def log_reconstruction(epoch, input, output, mask, train):
                   step=epoch)
 
 
-def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_interval):
+def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_interval, in_memory):
     config = checkpoint["config"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
@@ -57,10 +57,10 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
     wandb.init(config=config, name=name + "_"
-                                   + str(datetime.datetime.now()), entity="mae_dd2412")
+               + str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(
-        dataset, True, device, checkpoint, transform_type="pretrain")
+        dataset, True, device, checkpoint, transform_type="pretrain", in_memory=in_memory)
     train_reconstruction_loader = DataLoader(
         Subset(trainloader.dataset, range(4)), batch_size=4)
     criterion = MSELoss()
@@ -179,7 +179,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
             return
 
 
-def test_reconstruction(checkpoint, device):
+def test_reconstruction(checkpoint, device, in_memory):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     patch_size = config["model"]["patch_size"]
@@ -190,7 +190,7 @@ def test_reconstruction(checkpoint, device):
         f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/", exist_ok=True)
 
     testloader = get_dataloader(
-        dataset, False, device, checkpoint, transform_type=None)
+        dataset, False, device, checkpoint, transform_type=None, in_memory=in_memory)
     criterion = MSELoss()
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
@@ -226,7 +226,7 @@ def test_reconstruction(checkpoint, device):
     print(f"Test loss: {total_loss / len(testloader)}")
 
 
-def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
+def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
@@ -245,7 +245,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
     wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
 
     trainloader, valloader = get_dataloader(
-        dataset, True, device, checkpoint, transform_type="finetune")
+        dataset, True, device, checkpoint, transform_type="finetune", in_memory=in_memory)
     if multilabel:
         activate = torch.nn.Sigmoid()
         criterion = BCELoss()
@@ -335,7 +335,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id):
             return
 
 
-def test_classification(checkpoint, device, id):
+def test_classification(checkpoint, device, id, in_memory):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
@@ -345,7 +345,7 @@ def test_classification(checkpoint, device, id):
     wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
 
     testloader = get_dataloader(
-        dataset, False, device, checkpoint, transform_type=None)
+        dataset, False, device, checkpoint, transform_type=None, in_memory=in_memory)
 
     model = MAE(image_size, n_classes, **config["model"]).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
