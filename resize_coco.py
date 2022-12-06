@@ -40,3 +40,4 @@ for p in tqdm(paths, unit="image"):
     except FileNotFoundError:
         # Faster to ask for forgiveness
         save_path.parent.mkdir(parents=True, exist_ok=True)
+        image.save(save_path)
