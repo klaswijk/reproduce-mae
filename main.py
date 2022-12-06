@@ -55,6 +55,7 @@ def parse_arguments():
     parser.add_argument("--log_image_interval", type=int, default=100)
     parser.add_argument("--data-path", default="./data")
     parser.add_argument("--output-path", default="./")
+    parser.add_argument("--data-in-memory", default=False, action="store_true")
     return parser.parse_args()
 
 
@@ -93,12 +94,14 @@ def main():
             device,
             args.checkpoint_frequency,
             args.id,
-            args.log_image_interval
+            args.log_image_interval,
+            args.data_in_memory
         )
     elif args.test_reconstruction:
         run.test_reconstruction(
             checkpoint,
             device,
+            args.data_in_memory
         )
     elif args.finetune:
         run.finetune(
@@ -106,13 +109,15 @@ def main():
             args.epochs,
             device,
             args.checkpoint_frequency,
-            args.id
+            args.id,
+            args.data_in_memory
         )
     elif args.test_classification:
         run.test_classification(
             checkpoint,
             device,
             args.id,
+            args.data_in_memory
         )
 
 
