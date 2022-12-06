@@ -101,10 +101,10 @@ def get_transform(dataset_name, transform_type):
     ]
     if transform_type == "finetune":
         transform_list = [transforms.RandAugment()] + transform_list
-    if dataset_name == "coco":
-        size = int(info[dataset_name].image_size * 1.1)
-        transform_list = [transforms.Resize(
-            size, antialias=True)] + transform_list
+    # if dataset_name == "coco":
+    #    size = int(info[dataset_name].image_size * 1.1)
+    #    transform_list = [transforms.Resize(
+    #        size, antialias=True)] + transform_list
     return transforms.Compose(transform_list)
 
 
