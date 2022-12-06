@@ -17,8 +17,8 @@ parser.add_argument("--size", required=True, type=int,
                     help="Number of pixels of smaller edge after resizing")
 args = parser.parse_args()
 
-path = Path(args.full_size_path)
-resized_path = Path(args.resized_path)
+path = Path(args.full_size_path).resolve()
+resized_path = Path(args.resized_path).resolve()
 resized_path.mkdir(parents=True, exist_ok=True)
 resize = transforms.Resize(args.size, antialias=True)
 
@@ -34,7 +34,7 @@ paths = list(path.glob("*/*.jpg"))
 for p in tqdm(paths, unit="image"):
     image = Image.open(p).convert("RGB")
     image = resize(image)
-    save_path = resized_path / p.relative_to(*p.parts[:2])
+    save_path = resized_path / Path(*p.parts[-2:])
     try:
         image.save(save_path)
     except FileNotFoundError:
