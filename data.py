@@ -59,11 +59,12 @@ class ImageNetteDataset(Dataset):
 
 class CocoMultilabel(Dataset):
 
-    def __init__(self, path, transform=None, test=False, version="2017"):
+    def __init__(self, path, transform=None, test=False, version="2017", in_memory=True):
         datatype = "val" if test else "train"
         with open(f"{path}/coco/annotations/instances_{datatype}{version}.json", "r") as f:
             instances = json.load(f)
 
+        self.in_memory = in_memory
         self.transform = transform
         self.datapath = f"{path}/coco/{datatype}{version}"
         self.images = [image["file_name"] for image in instances["images"]]
@@ -81,12 +82,19 @@ class CocoMultilabel(Dataset):
             image_id = annotation["image_id"]
             self.labels[image_id][cat_id - 1] = 1
 
+        if in_memory:
+            self.data = tuple(Image.open(f"{self.datapath}/{self.images[i]}").convert('RGB')
+                              for i, _ in enumerate(self.image_ids))
+
     def __len__(self):
         return len(self.image_ids)
 
     def __getitem__(self, idx):
-        image = Image.open(f"{self.datapath}/{self.images[idx]}")
-        image = image.convert('RGB')
+        if self.in_memory:
+            image = self.data[idx]
+        else:
+            image = Image.open(
+                f"{self.datapath}/{self.images[idx]}").convert('RGB')
         label = self.labels[self.image_ids[idx]]
         if self.transform:
             image = self.transform(image)
@@ -144,7 +152,7 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None)
         dataset = Subset(dataset, range(limit))
 
     # Return dataloader
-    num_workers = 4
+    num_workers = 8
     pin_memory = str(device) != "cpu"
     pin_memory_device = str(device) if str(device) != "cpu" else ""
     batch_size = checkpoint["config"]["batch_size"]
@@ -164,6 +172,7 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None)
             batch_size=batch_size,
             shuffle=True,
             num_workers=num_workers,
+            persistent_workers=True,
             pin_memory=pin_memory,
             pin_memory_device=pin_memory_device
         )
@@ -172,6 +181,7 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None)
             batch_size=batch_size,
             shuffle=False,
             num_workers=num_workers,
+            persistent_workers=True,
             pin_memory=pin_memory,
             pin_memory_device=pin_memory_device
         )
@@ -182,6 +192,7 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None)
             batch_size=batch_size,
             shuffle=False,
             num_workers=num_workers,
+            persistent_workers=True,
             pin_memory=pin_memory,
             pin_memory_device=pin_memory_device
         )
