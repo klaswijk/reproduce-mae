@@ -10,7 +10,7 @@
 
 
 #call with: sbatch --export epochs_pretrain=4000,epochs_finetune=4000,checkpoint_frequency=500,log_image_ingerval=50,data_path=/local_storage/datasets/rickym/,output_path=/local_storage/users/rickym/models /Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/run_masks.sbatch
-#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_imagenette/run_masks_test.sbatch
+#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_coco/run_masks.sbatch
 # 346580
 
 epochs_pretrain=4000
