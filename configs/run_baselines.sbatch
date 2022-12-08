@@ -14,7 +14,7 @@
 # 346585
 
 epochs_pretrain=4000
-epochs_finetune=4000
+epochs_finetune=10
 checkpoint_frequency=500
 log_image_ingerval=50
 data_path=/local_storage/datasets/rickym/
@@ -37,7 +37,7 @@ do
     python /Midgard/home/rickym/reproduce-mae/main.py --finetune \
         --config "configs/${config}_finetune_baseline.yaml" \
         --epochs "$epochs_finetune" \
-        --id "${SLURM_JOB_ID}_${config}" \
+        --id "${SLURM_JOB_ID}_${config}_baseline" \
         --checkpoint-frequency "$checkpoint_frequency" \
         --log_image_interval "$log_image_ingerval" \
         --data-path "$data_path" \
@@ -45,8 +45,8 @@ do
 
     echo "test classification ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --test-classification \
-        --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_finetune_baseline/current_best.pth" \
-        --id "${SLURM_JOB_ID}_${config}" \
+        --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_baseline_finetune/current_best.pth" \
+        --id "${SLURM_JOB_ID}_${config}_baseline" \
 
     echo "Finished ${config}"
 done
