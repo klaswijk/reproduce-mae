@@ -199,7 +199,7 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None,
         dataset = Subset(dataset, range(limit))
 
     # Return dataloader
-    num_workers = 8
+    num_workers = 4
     pin_memory = str(device) != "cpu"
     pin_memory_device = str(device) if str(device) != "cpu" else ""
     batch_size = checkpoint["config"]["batch_size"]
