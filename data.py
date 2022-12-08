@@ -14,6 +14,7 @@ DatasetInfo = namedtuple(
 info = {
     "cifar10": DatasetInfo(image_size=32, n_classes=10, multilabel=False),
     "imagenette": DatasetInfo(image_size=160, n_classes=10, multilabel=False),
+    "imagewoof": DatasetInfo(image_size=160, n_classes=10, multilabel=False),
     "coco": DatasetInfo(image_size=96, n_classes=80, multilabel=True)
 }
 
@@ -39,6 +40,45 @@ class ImageNetteDataset(Dataset):
             "n03394916": 7,
             "n03425413": 8,
             "n03888257": 9,
+        }
+        self.target_transform = transforms.Lambda(targets.get)
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
+        image = Image.open(img_path)
+        image = image.convert('RGB')
+        label = self.img_labels.iloc[idx, 1]
+        if self.transform:
+            image = self.transform(image)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return image, label
+
+
+class ImageWoofDataset(Dataset):
+    def __init__(self, path, transform=None, test=False):
+        # Should have 10000 train and 2955 val ("test") images
+        self.img_labels = read_csv(path + "noisy_imagewoof.csv")
+        if test:
+            self.img_labels = self.img_labels[10000:]
+        else:
+            self.img_labels = self.img_labels[:10000]
+        self.img_dir = path
+        self.transform = transform
+        targets = {
+            "n02086240": 0,
+            "n02087394": 1,
+            "n02088364": 2,
+            "n02089973": 3,
+            "n02093754": 4,
+            "n02096294": 5,
+            "n02099601": 6,
+            "n02105641": 7,
+            "n02111889": 8,
+            "n02115641": 9
         }
         self.target_transform = transforms.Lambda(targets.get)
 
@@ -134,6 +174,12 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None,
     elif dataset_name == "imagenette":
         dataset = ImageNetteDataset(
             data_path + "/imagenette2-160/",
+            transform=transform,
+            test=not train
+        )
+    elif dataset_name == "imagewoof":
+        dataset = ImageWoofDataset(
+            data_path + "/imagewoof2-160/",
             transform=transform,
             test=not train
         )
