@@ -39,6 +39,9 @@ do
         --epochs "$epochs_finetune" \
         --id "${SLURM_JOB_ID}_${config}" \
         --checkpoint-frequency "$checkpoint_frequency" \
+        --log_image_interval "$log_image_ingerval" \
+        --data-path "$data_path" \
+        --output-path "$output_path" \
 
     echo "test classification ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --test-classification \
