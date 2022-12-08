@@ -14,7 +14,7 @@
 # 346585
 
 epochs_pretrain=4000
-epochs_finetune=10
+epochs_finetune=4000
 checkpoint_frequency=500
 log_image_ingerval=50
 data_path=/local_storage/datasets/rickym/
