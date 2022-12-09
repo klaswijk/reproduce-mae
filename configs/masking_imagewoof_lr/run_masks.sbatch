@@ -10,7 +10,7 @@
 #SBATCH --error  /Midgard/home/%u/logs/%J.err
 
 
-#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_imagewoof/run_masks.sbatch
+#call with: sbatch /Midgard/home/rickym/reproduce-mae/configs/masking_imagewoof_lr/run_masks.sbatch
 # 346585
 
 epochs_pretrain=4000
@@ -35,7 +35,7 @@ for config in mask01 mask03 mask05 mask07 mask09
 do
     echo "pre-traning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --pretrain \
-        --config "/Midgard/home/rickym/reproduce-mae/configs/masking_imagewoof/${config}_pretrain.yaml" \
+        --config "/Midgard/home/rickym/reproduce-mae/configs/masking_imagewoof_lr/${config}_pretrain.yaml" \
         --id "${SLURM_JOB_ID}_${config}" \
         --epochs "$epochs_pretrain" \
         --checkpoint-frequency "$checkpoint_frequency" \
@@ -45,7 +45,7 @@ do
 
     echo "finetuning ${config}"
     python /Midgard/home/rickym/reproduce-mae/main.py --finetune \
-        --config "configs/masking_imagewoof/${config}_finetune.yaml" \
+        --config "configs/masking_imagewoof_lr/${config}_finetune.yaml" \
         --checkpoint "$output_path/checkpoints/${SLURM_JOB_ID}_${config}_pretrain/current_best.pth" \
         --epochs "$epochs_finetune" \
         --id "${SLURM_JOB_ID}_${config}" \
