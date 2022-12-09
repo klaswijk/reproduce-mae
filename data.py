@@ -1,13 +1,13 @@
-import os
 import json
-import torch
-import numpy as np
+import os
 from collections import namedtuple
-from pandas import read_csv
-from torch.utils.data import DataLoader, Subset, Dataset, random_split
-from torchvision import datasets, transforms
-from PIL import Image
 
+import numpy as np
+import torch
+from pandas import read_csv
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torchvision import datasets, transforms
 
 DatasetInfo = namedtuple(
     "DatasetInfo", ["image_size", "n_classes", "multilabel"])
@@ -20,7 +20,7 @@ info = {
 
 
 class ImageNetteDataset(Dataset):
-    def __init__(self, path, transform=None, test=False):
+    def __init__(self, path, transform=None, test=False, in_memory=False):
         # Should have 10000 train and 3395 val ("test") images
         self.img_labels = read_csv(path + "noisy_imagenette.csv")
         if test:
@@ -42,14 +42,23 @@ class ImageNetteDataset(Dataset):
             "n03888257": 9,
         }
         self.target_transform = transforms.Lambda(targets.get)
+        self.in_memory = in_memory
+        if in_memory:
+            self.data = tuple(
+                Image.open(os.path.join(
+                    self.img_dir, self.img_labels.iloc[idx, 0])).convert('RGB')
+                for idx, _ in enumerate(self.img_labels))
 
     def __len__(self):
         return len(self.img_labels)
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        image = Image.open(img_path)
-        image = image.convert('RGB')
+        if self.in_memory:
+            image = self.data[idx]
+        else:
+            img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
+            image = Image.open(img_path)
+            image = image.convert('RGB')
         label = self.img_labels.iloc[idx, 1]
         if self.transform:
             image = self.transform(image)
@@ -184,7 +193,8 @@ def get_dataloader(dataset_name, train, device, checkpoint, transform_type=None,
         dataset = ImageNetteDataset(
             data_path + "/imagenette2-160/",
             transform=transform,
-            test=not train
+            test=not train,
+            in_memory=in_memory
         )
     elif dataset_name == "imagewoof":
         dataset = ImageWoofDataset(
