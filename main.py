@@ -56,6 +56,7 @@ def parse_arguments():
     parser.add_argument("--data-path", default="./data")
     parser.add_argument("--output-path", default="./")
     parser.add_argument("--data-in-memory", default=False, action="store_true")
+    parser.add_argument("--override-paths", default=False, action="store_true")
     return parser.parse_args()
 
 
@@ -78,6 +79,7 @@ def main():
         # Start fresh based on config
         with open(args.config, "r") as f:
             config = yaml.safe_load(f)
+
         if not args.checkpoint:
             checkpoint = initialize(config)
             checkpoint["data_path"] = args.data_path
@@ -85,6 +87,11 @@ def main():
         else:
             checkpoint["config"] = config
             checkpoint = overwrite(checkpoint, config)
+
+    if args.override_paths:
+        print("overriding paths")
+        checkpoint["data_path"] = args.data_path
+        checkpoint["output_path"] = args.output_path
 
     # Run the specified task
     if args.pretrain:
@@ -101,7 +108,7 @@ def main():
         run.test_reconstruction(
             checkpoint,
             device,
-            args.data_in_memory
+            args.data_in_memory,
         )
     elif args.finetune:
         run.finetune(
