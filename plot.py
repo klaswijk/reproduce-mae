@@ -20,7 +20,7 @@ def plot_reconstruction(
     true,
     reconstruction,
     mask,
-    size=12,
+    size=10,
 ):
     masked = torch.clone(true[:size])
     masked[:, :, mask] = 0
