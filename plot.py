@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import os
 
 from torchvision import utils
 
@@ -19,15 +20,25 @@ def plot_reconstruction(
     true,
     reconstruction,
     mask,
-    size=2,
+    size=12,
 ):
     masked = torch.clone(true[:size])
     masked[:, :, mask] = 0
     reconstruction[:size, :, ~mask] = true[:size, :, ~mask]  # Transfer known patches
 
-    combined = torch.vstack([true[:size], masked, reconstruction[:size]])
+    for i in range(size):
+        img_path = path + f'/img{i}'
+        os.makedirs(img_path, exist_ok=True)
 
-    save_image(path, utils.make_grid(combined, nrow=size, padding=0))
+        save_image(img_path + "/true.png", true[i])
+
+        recon = torch.stack([masked[i], reconstruction[i]])
+        print(recon.shape)
+        save_image(img_path + "/reconstruction.png",
+                   utils.make_grid(recon, nrow=2, padding=0))
+
+        combined = torch.stack([masked[i], reconstruction[i], true[i]])
+        save_image(img_path + "/combined.png", utils.make_grid(combined, nrow=3, padding=0))
 
 
 def plot_loss(path, loss):

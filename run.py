@@ -219,7 +219,7 @@ def test_reconstruction(checkpoint, device, in_memory):
         non_masked_indices, image_size, patch_size)
     output = model.unpatch(output_patches)
     plot_reconstruction(
-        f"{checkpoint['output_path']}plots/{dataset}/reconstruction/test/epoch_{epoch}.png",
+        f"{checkpoint['output_path']}plots/{dataset}/reconstruction/test",
         input, output, mask
     )
 
