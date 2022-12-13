@@ -181,13 +181,13 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
 
 def test_reconstruction(checkpoint, device, in_memory):
     config = checkpoint["config"]
-    batch_size = config["batch_size"]
+    mask_ratio = config["model"]["mask_ratio"]
     patch_size = config["model"]["patch_size"]
     dataset = config["data"]["dataset"]
     image_size, n_classes, _ = info[dataset]
 
     os.makedirs(
-        f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/", exist_ok=True)
+        f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/{mask_ratio}", exist_ok=True)
 
     testloader = get_dataloader(
         dataset, False, device, checkpoint, transform_type=None, in_memory=in_memory)
@@ -214,16 +214,16 @@ def test_reconstruction(checkpoint, device, in_memory):
 
             total_loss += loss.item()
 
-    epoch = checkpoint["pretrain_epoch"]
+            # only run once
+            break
+
     mask = mask_from_patches(
         non_masked_indices, image_size, patch_size)
     output = model.unpatch(output_patches)
     plot_reconstruction(
-        f"{checkpoint['output_path']}plots/{dataset}/reconstruction/test",
+        f"{checkpoint['output_path']}/plots/{dataset}/reconstruction/test/{mask_ratio}",
         input, output, mask
     )
-
-    print(f"Test loss: {total_loss / len(testloader)}")
 
 
 def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory):

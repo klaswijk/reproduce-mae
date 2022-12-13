@@ -33,7 +33,6 @@ def plot_reconstruction(
         save_image(img_path + "/true.png", true[i])
 
         recon = torch.stack([masked[i], reconstruction[i]])
-        print(recon.shape)
         save_image(img_path + "/reconstruction.png",
                    utils.make_grid(recon, nrow=2, padding=0))
 
