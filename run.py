@@ -4,12 +4,12 @@ import os
 import numpy as np
 import torch
 import torchmetrics
-import wandb
 from torch.nn import MSELoss, CrossEntropyLoss, BCELoss, UpsamplingNearest2d
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Subset, DataLoader
 
+import wandb
 from data import info, get_dataloader
 from mae import MAE
 from plot import plot_reconstruction
@@ -57,7 +57,7 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
     wandb.init(config=config, name=name + "_"
-               + str(datetime.datetime.now()), entity="mae_dd2412")
+                                   + str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(
         dataset, True, device, checkpoint, transform_type="pretrain", in_memory=in_memory)
@@ -408,6 +408,16 @@ def test_classification(checkpoint, device, id, in_memory):
                                                     num_labels=n_classes,
                                                     top_k=k,
                                                     ).to(device)
+
+    metrics[f"auroc"] = torchmetrics.AUROC(task=task,
+                                           num_classes=n_classes,
+                                           num_labels=n_classes,
+                                           ).to(device)
+
+    metrics[f"roc"] = torchmetrics.ROC(task=task,
+                                       num_classes=n_classes,
+                                       num_labels=n_classes,
+                                       ).to(device)
 
     targets = []
     outputs = []
