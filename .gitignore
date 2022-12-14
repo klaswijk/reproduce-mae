@@ -136,3 +136,4 @@ dmypy.json
 /data/
 /plots/
 /wandb/
+/old_save/
