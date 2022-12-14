@@ -262,7 +262,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory, fi
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
     # Freeze all the blocks that need not be trained:
-    if finetune_blocks is not None and finetune_blocks != 0:
+    if finetune_blocks is not None:
         model.freeze(finetune_blocks)
 
     start = checkpoint["finetune_epoch"] + 1
