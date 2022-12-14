@@ -158,7 +158,9 @@ def pretrain(checkpoint, epochs, device, checkpoint_frequency, id, log_image_int
                 pretrain_epoch=epoch,
             )
 
-        if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
+        # if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
+        if epoch_val_loss < best_val_loss[1]:
+
             # found a better checkpoint
             save_checkpoint(
                 f"{checkpoint['output_path']}/checkpoints/{name}/current_best.pth",
@@ -318,7 +320,8 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory, fi
                 finetune_epoch=epoch,
             )
 
-        if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
+        if epoch_val_loss < best_val_loss[1]:
+            # if epoch > config["lookahead"] and epoch_val_loss < best_val_loss[1]:
             # found a better checkpoint
             save_checkpoint(
                 f"{checkpoint['output_path']}/checkpoints/{name}/current_best.pth",
