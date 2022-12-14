@@ -57,6 +57,7 @@ def parse_arguments():
     parser.add_argument("--output-path", default="./")
     parser.add_argument("--data-in-memory", default=False, action="store_true")
     parser.add_argument("--override-paths", default=False, action="store_true")
+    parser.add_argument("--finetune-blocks", type=int, default=None)
     return parser.parse_args()
 
 
@@ -117,7 +118,8 @@ def main():
             device,
             args.checkpoint_frequency,
             args.id,
-            args.data_in_memory
+            args.data_in_memory,
+            args.finetune_blocks
         )
     elif args.test_classification:
         run.test_classification(

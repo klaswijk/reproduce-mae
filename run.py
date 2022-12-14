@@ -226,7 +226,7 @@ def test_reconstruction(checkpoint, device, in_memory):
     )
 
 
-def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory):
+def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory, finetune_blocks):
     config = checkpoint["config"]
     batch_size = config["batch_size"]
     dataset = config["data"]["dataset"]
@@ -260,6 +260,10 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory):
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     if checkpoint["finetune_epoch"] != 0:
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
+    # Freeze all the blocks that need not be trained:
+    if finetune_blocks is not None and finetune_blocks != 0:
+        model.freeze(finetune_blocks)
 
     start = checkpoint["finetune_epoch"] + 1
     best_val_loss = (0, np.Inf)  # epoch and loss

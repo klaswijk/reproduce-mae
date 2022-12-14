@@ -138,6 +138,23 @@ class MAE(nn.Module):
         w = self.encoder_proj.weight.data
         torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
 
+    def freeze(self, n_blocks: int):
+        """
+        Freezes all parameters except the final 'n_blocks' part of the encoder
+        to use when finetuning
+        """
+        for param in self.parameters():
+            param.requires_grad = False
+
+        total_blocks = len(self.encoder.layers)
+
+        # Unfreeze the last 'n_blocks' blocks
+        for i in range(n_blocks):
+            self.encoder.layers[total_blocks - (i + 1)].requires_grad_(True)
+
+        # Unfreeze the classifier layer
+        self.classifier.requires_grad_(True)
+
     def embed(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder_proj(x)
         x = x.reshape(x.shape[0], self.encoder_hidden_dim,
