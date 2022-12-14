@@ -38,7 +38,7 @@ Current implementation is tested on 160px size
 
 ### Coco 🐬 <a name="coco"></a>
 
-Can be downloaded at https://cocodataset.org/#home
+Can be downloaded at with ```bash ./download_coco.sh <version>``` with version 2014 or 2017
 Current implementation is tested on coco2017 and is then resized using
 
 ```
