@@ -244,7 +244,7 @@ def finetune(checkpoint, epochs, device, checkpoint_frequency, id, in_memory, fi
     os.makedirs(
         f"{checkpoint['output_path']}/checkpoints/{name}", exist_ok=True)
 
-    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
+    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()), entity="mae_dd2412")
 
     trainloader, valloader = get_dataloader(
         dataset, True, device, checkpoint, transform_type="finetune", in_memory=in_memory)
@@ -349,7 +349,7 @@ def test_classification(checkpoint, device, id, in_memory):
     image_size, n_classes, multilabel = info[dataset]
     name = id + "_test_classification"
 
-    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()))
+    wandb.init(config=config, name=name + "_" + str(datetime.datetime.now()), entity="mae_dd2412")
 
     testloader = get_dataloader(
         dataset, False, device, checkpoint, transform_type=None, in_memory=in_memory)
