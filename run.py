@@ -417,10 +417,11 @@ def test_classification(checkpoint, device, id, in_memory):
                                            num_labels=n_classes,
                                            ).to(device)
 
-    metrics[f"roc"] = torchmetrics.ROC(task=task,
-                                       num_classes=n_classes,
-                                       num_labels=n_classes,
-                                       ).to(device)
+    # returns a vector so cant be logged
+    # metrics[f"roc"] = torchmetrics.ROC(task=task,
+    #                                    num_classes=n_classes,
+    #                                    num_labels=n_classes,
+    #                                    ).to(device)
 
     targets = []
     outputs = []
